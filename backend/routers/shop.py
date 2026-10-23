@@ -1,6 +1,15 @@
+import uuid
+from datetime import datetime
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends
 from database import get_db
-from models import ShopDto, ShopUpdateDto, SellerDto
+from models import (
+    ShopDto,
+    ShopUpdateDto,
+    SellerDto,
+    ShopChangeRequestCreateDto,
+    ShopChangeRequestDto
+)
 from routers.auth import get_current_seller
 from services.working_hours import is_within_working_hours, is_shop_effectively_open
 
@@ -70,8 +79,28 @@ def update_shop_profile(payload: ShopUpdateDto, seller: SellerDto = Depends(get_
         cursor.execute("SELECT * FROM shop_settings WHERE shop_id = ?", (seller.shop_id,))
         row = cursor.fetchone()
 
-    target_open_time = payload.open_time if payload.open_time is not None else (row["open_time"] or "09:00")
-    target_close_time = payload.close_time if payload.close_time is not None else (row["close_time"] or "21:00")
+    # Security check: Block direct changes to general info and working hours
+    has_general_info_change = False
+    if payload.shop_name is not None and payload.shop_name != row["shop_name"]:
+        has_general_info_change = True
+    if payload.phone is not None and payload.phone != row["phone"]:
+        has_general_info_change = True
+    if payload.address is not None and payload.address != row["address"]:
+        has_general_info_change = True
+    if payload.open_time is not None and payload.open_time != row["open_time"]:
+        has_general_info_change = True
+    if payload.close_time is not None and payload.close_time != row["close_time"]:
+        has_general_info_change = True
+
+    if has_general_info_change:
+        conn.close()
+        raise HTTPException(
+            status_code=400,
+            detail="تغییر مشخصات عمومی و ساعات کاری فروشگاه تنها از طریق ثبت درخواست رسمی به پشتیبانی امکان‌پذیر است."
+        )
+
+    target_open_time = row["open_time"] or "09:00"
+    target_close_time = row["close_time"] or "21:00"
     target_holiday = payload.holiday_mode if payload.holiday_mode is not None else bool(row["holiday_mode"])
 
     # If attempting to set is_open = True, validate working hours & holiday mode
@@ -92,24 +121,9 @@ def update_shop_profile(payload: ShopUpdateDto, seller: SellerDto = Depends(get_
 
     updates = []
     params = []
-    if payload.shop_name is not None:
-        updates.append("shop_name = ?")
-        params.append(payload.shop_name)
-    if payload.address is not None:
-        updates.append("address = ?")
-        params.append(payload.address)
-    if payload.phone is not None:
-        updates.append("phone = ?")
-        params.append(payload.phone)
     if payload.is_open is not None:
         updates.append("is_open = ?")
         params.append(1 if payload.is_open else 0)
-    if payload.open_time is not None:
-        updates.append("open_time = ?")
-        params.append(payload.open_time)
-    if payload.close_time is not None:
-        updates.append("close_time = ?")
-        params.append(payload.close_time)
     if payload.accept_inquiries is not None:
         updates.append("accept_inquiries = ?")
         params.append(1 if payload.accept_inquiries else 0)
@@ -126,6 +140,101 @@ def update_shop_profile(payload: ShopUpdateDto, seller: SellerDto = Depends(get_
 
     conn.close()
     return get_shop_profile(seller)
+
+@router.post("/change-requests", response_model=ShopChangeRequestDto)
+def submit_shop_change_request(
+    payload: ShopChangeRequestCreateDto,
+    seller: SellerDto = Depends(get_current_seller)
+):
+    """Submit a formal change request to support for updating shop profile/working hours."""
+    if not any([
+        payload.requested_shop_name,
+        payload.requested_phone,
+        payload.requested_address,
+        payload.requested_open_time,
+        payload.requested_close_time
+    ]):
+        raise HTTPException(status_code=400, detail="حداقل یکی از مشخصات برای تغییر باید مشخص شود.")
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Check if there is already a PENDING request
+    cursor.execute("""
+    SELECT request_id FROM shop_change_requests
+    WHERE shop_id = ? AND status = 'PENDING'
+    """, (seller.shop_id,))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(
+            status_code=400,
+            detail="در حال حاضر یک درخواست تغییر اطلاعات در انتظار بررسی برای این فروشگاه ثبت شده است."
+        )
+
+    request_id = f"req_{uuid.uuid4().hex[:10]}"
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    cursor.execute("""
+    INSERT INTO shop_change_requests (
+        request_id, shop_id, seller_id, requested_shop_name,
+        requested_phone, requested_address, requested_open_time,
+        requested_close_time, reason, status, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)
+    """, (
+        request_id, seller.shop_id, seller.seller_id,
+        payload.requested_shop_name, payload.requested_phone,
+        payload.requested_address, payload.requested_open_time,
+        payload.requested_close_time, payload.reason, now_str
+    ))
+    conn.commit()
+    conn.close()
+
+    return ShopChangeRequestDto(
+        request_id=request_id,
+        shop_id=seller.shop_id,
+        seller_id=seller.seller_id,
+        requested_shop_name=payload.requested_shop_name,
+        requested_phone=payload.requested_phone,
+        requested_address=payload.requested_address,
+        requested_open_time=payload.requested_open_time,
+        requested_close_time=payload.requested_close_time,
+        reason=payload.reason,
+        status="PENDING",
+        created_at=now_str
+    )
+
+@router.get("/change-requests/latest", response_model=Optional[ShopChangeRequestDto])
+def get_latest_shop_change_request(seller: SellerDto = Depends(get_current_seller)):
+    """Get the latest submitted change request for the store."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT * FROM shop_change_requests
+    WHERE shop_id = ?
+    ORDER BY created_at DESC
+    LIMIT 1
+    """, (seller.shop_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return ShopChangeRequestDto(
+        request_id=row["request_id"],
+        shop_id=row["shop_id"],
+        seller_id=row["seller_id"],
+        requested_shop_name=row["requested_shop_name"],
+        requested_phone=row["requested_phone"],
+        requested_address=row["requested_address"],
+        requested_open_time=row["requested_open_time"],
+        requested_close_time=row["requested_close_time"],
+        reason=row["reason"],
+        status=row["status"],
+        created_at=str(row["created_at"]),
+        reviewed_at=str(row["reviewed_at"]) if row["reviewed_at"] else None,
+        review_notes=row["review_notes"]
+    )
 
 @router.post("/toggle-status", response_model=ShopDto)
 def toggle_shop_status(seller: SellerDto = Depends(get_current_seller)):

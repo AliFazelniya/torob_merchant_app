@@ -59,6 +59,31 @@ data class ShopUpdateDto(
     @SerializedName("holiday_mode") val holidayMode: Boolean? = null
 )
 
+data class ShopChangeRequestCreateDto(
+    @SerializedName("requested_shop_name") val requestedShopName: String? = null,
+    @SerializedName("requested_phone") val requestedPhone: String? = null,
+    @SerializedName("requested_address") val requestedAddress: String? = null,
+    @SerializedName("requested_open_time") val requestedOpenTime: String? = null,
+    @SerializedName("requested_close_time") val requestedCloseTime: String? = null,
+    @SerializedName("reason") val reason: String? = null
+)
+
+data class ShopChangeRequestDto(
+    @SerializedName("request_id") val requestId: String,
+    @SerializedName("shop_id") val shopId: String,
+    @SerializedName("seller_id") val sellerId: String,
+    @SerializedName("requested_shop_name") val requestedShopName: String? = null,
+    @SerializedName("requested_phone") val requestedPhone: String? = null,
+    @SerializedName("requested_address") val requestedAddress: String? = null,
+    @SerializedName("requested_open_time") val requestedOpenTime: String? = null,
+    @SerializedName("requested_close_time") val requestedCloseTime: String? = null,
+    @SerializedName("reason") val reason: String? = null,
+    @SerializedName("status") val status: String,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("reviewed_at") val reviewedAt: String? = null,
+    @SerializedName("review_notes") val reviewNotes: String? = null
+)
+
 // --- Inquiry Models ---
 data class InquiryDto(
     @SerializedName("inquiry_id") val inquiryId: String,

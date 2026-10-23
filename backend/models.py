@@ -52,6 +52,33 @@ class ShopUpdateDto(BaseModel):
     accept_inquiries: Optional[bool] = None
     holiday_mode: Optional[bool] = None
 
+class ShopChangeRequestCreateDto(BaseModel):
+    requested_shop_name: Optional[str] = None
+    requested_phone: Optional[str] = None
+    requested_address: Optional[str] = None
+    requested_open_time: Optional[str] = None
+    requested_close_time: Optional[str] = None
+    reason: Optional[str] = None
+
+class ShopChangeRequestDto(BaseModel):
+    request_id: str
+    shop_id: str
+    seller_id: str
+    requested_shop_name: Optional[str] = None
+    requested_phone: Optional[str] = None
+    requested_address: Optional[str] = None
+    requested_open_time: Optional[str] = None
+    requested_close_time: Optional[str] = None
+    reason: Optional[str] = None
+    status: str
+    created_at: str
+    reviewed_at: Optional[str] = None
+    review_notes: Optional[str] = None
+
+class ShopChangeRequestReviewDto(BaseModel):
+    action: str = Field(..., description="'approve' or 'reject'")
+    review_notes: Optional[str] = None
+
 # --- Inquiry Models ---
 class InquiryDto(BaseModel):
     inquiry_id: str

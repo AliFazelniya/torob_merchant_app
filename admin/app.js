@@ -21,6 +21,7 @@ function switchTab(tabId) {
     loadSchedulerConfig();
     loadStores();
   }
+  if (tabId === 'changerequests') loadShopChangeRequests();
 }
 
 // Format numbers in Persian
@@ -273,11 +274,138 @@ function refreshData() {
   loadInquiries();
   loadStores();
   loadPushLogs();
+  loadShopChangeRequests();
+}
+
+// Fetch and render Shop Change Requests
+async function loadShopChangeRequests() {
+  const tbody = document.getElementById('change-requests-table-body');
+  const badge = document.getElementById('pending-requests-badge');
+  try {
+    const res = await fetch(`${API_BASE}/admin/shop-change-requests`);
+    if (!res.ok) return;
+    const requests = await res.json();
+
+    const pendingCount = requests.filter(r => r.status === 'PENDING').length;
+    if (badge) {
+      if (pendingCount > 0) {
+        badge.innerText = toPersianDigits(pendingCount);
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    if (!tbody) return;
+    if (!requests.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">هیچ درخواست تغییر اطلاعاتی ثبت نشده است.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = requests.map(req => {
+      let statusBadge = '';
+      let actionButtons = '-';
+
+      if (req.status === 'PENDING') {
+        statusBadge = `<span class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full text-[11px] font-bold">در انتظار بررسی پشتیبانی</span>`;
+        actionButtons = `
+          <div class="flex items-center gap-1.5">
+            <button onclick="approveChangeRequest('${req.request_id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition shadow-sm">
+              تایید و اعمال
+            </button>
+            <button onclick="rejectChangeRequest('${req.request_id}')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition shadow-sm">
+              رد درخواست
+            </button>
+          </div>
+        `;
+      } else if (req.status === 'APPROVED') {
+        statusBadge = `<span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-[11px] font-bold">تایید و اعمال شد</span>`;
+        actionButtons = `<span class="text-[11px] text-slate-500">${req.review_notes || 'تایید شد'}</span>`;
+      } else if (req.status === 'REJECTED') {
+        statusBadge = `<span class="bg-rose-100 text-rose-800 px-2.5 py-1 rounded-full text-[11px] font-bold">رد شد</span>`;
+        actionButtons = `<span class="text-[11px] text-rose-600">${req.review_notes || 'رد شد'}</span>`;
+      }
+
+      // Changes detail
+      let changesHtml = '<div class="space-y-1 text-[11px]">';
+      if (req.requested_shop_name) {
+        changesHtml += `<div><span class="text-slate-400">نام جدید:</span> <strong class="text-slate-800">${req.requested_shop_name}</strong></div>`;
+      }
+      if (req.requested_phone) {
+        changesHtml += `<div><span class="text-slate-400">تلفن جدید:</span> <span class="font-mono text-slate-800">${toPersianDigits(req.requested_phone)}</span></div>`;
+      }
+      if (req.requested_address) {
+        changesHtml += `<div><span class="text-slate-400">آدرس جدید:</span> <span class="text-slate-800">${req.requested_address}</span></div>`;
+      }
+      if (req.requested_open_time || req.requested_close_time) {
+        changesHtml += `<div><span class="text-slate-400">ساعت کاری:</span> <span class="font-mono text-slate-800">${toPersianDigits(req.requested_open_time || '')} تا ${toPersianDigits(req.requested_close_time || '')}</span></div>`;
+      }
+      changesHtml += '</div>';
+
+      return `
+        <tr class="hover:bg-slate-50/80 transition">
+          <td class="py-3 px-4 font-mono text-slate-600 font-bold text-[11px]">${req.request_id}</td>
+          <td class="py-3 px-4 text-slate-700 font-mono text-[11px]">${req.shop_id}</td>
+          <td class="py-3 px-4">${changesHtml}</td>
+          <td class="py-3 px-4 text-slate-600 max-w-xs text-[11px]">${req.reason || 'بدون توضیح'}</td>
+          <td class="py-3 px-4">${statusBadge}</td>
+          <td class="py-3 px-4 text-slate-400 font-mono text-[11px]">${req.created_at}</td>
+          <td class="py-3 px-4">${actionButtons}</td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-rose-500">خطا در دریافت لیست درخواست‌ها</td></tr>`;
+  }
+}
+
+async function approveChangeRequest(requestId) {
+  if (!confirm('آیا از تایید این درخواست و اعمال مستقیم مشخصات در فروشگاه اطمینان دارید؟')) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/shop-change-requests/${requestId}/approve`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ action: 'approve', review_notes: 'تایید توسط پشتیبانی ترب' })
+    });
+    if (res.ok) {
+      alert('درخواست با موفقیت تایید و مشخصات فروشگاه بروزرسانی شد.');
+      loadShopChangeRequests();
+      loadStores();
+    } else {
+      const err = await res.json();
+      alert('خطا: ' + (err.detail || 'تایید ناموفق'));
+    }
+  } catch (err) {
+    alert('خطای اتصال: ' + err);
+  }
+}
+
+async function rejectChangeRequest(requestId) {
+  const reason = prompt('علت رد درخواست را جهت اطلاع فروشنده وارد کنید:');
+  if (reason === null) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/shop-change-requests/${requestId}/reject`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ action: 'reject', review_notes: reason || 'رد توسط پشتیبانی ترب' })
+    });
+    if (res.ok) {
+      alert('درخواست رد شد.');
+      loadShopChangeRequests();
+    } else {
+      const err = await res.json();
+      alert('خطا: ' + (err.detail || 'رد ناموفق'));
+    }
+  } catch (err) {
+    alert('خطای اتصال: ' + err);
+  }
 }
 
 // Initial load
 document.addEventListener('DOMContentLoaded', () => {
   loadInquiries();
   loadStores();
+  loadShopChangeRequests();
   setInterval(loadInquiries, 5000); // 5s auto-refresh
+  setInterval(loadShopChangeRequests, 10000); // 10s auto-refresh
 });

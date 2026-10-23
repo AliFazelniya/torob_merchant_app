@@ -3,7 +3,14 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from database import get_db
-from models import CreateTestInquiryRequest, InquiryDto, PushLogDto, SchedulerConfigDto
+from models import (
+    CreateTestInquiryRequest,
+    InquiryDto,
+    PushLogDto,
+    SchedulerConfigDto,
+    ShopChangeRequestDto,
+    ShopChangeRequestReviewDto
+)
 from services.scheduler import scheduler
 from services.working_hours import is_shop_effectively_open
 
@@ -202,3 +209,151 @@ def get_admin_shops():
         results.append(d)
 
     return results
+
+@router.get("/shop-change-requests", response_model=List[ShopChangeRequestDto])
+def get_admin_shop_change_requests(status: Optional[str] = None):
+    conn = get_db()
+    cursor = conn.cursor()
+    if status:
+        cursor.execute("""
+        SELECT * FROM shop_change_requests
+        WHERE status = ?
+        ORDER BY created_at DESC
+        """, (status.upper(),))
+    else:
+        cursor.execute("""
+        SELECT * FROM shop_change_requests
+        ORDER BY created_at DESC
+        """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        ShopChangeRequestDto(
+            request_id=r["request_id"],
+            shop_id=r["shop_id"],
+            seller_id=r["seller_id"],
+            requested_shop_name=r["requested_shop_name"],
+            requested_phone=r["requested_phone"],
+            requested_address=r["requested_address"],
+            requested_open_time=r["requested_open_time"],
+            requested_close_time=r["requested_close_time"],
+            reason=r["reason"],
+            status=r["status"],
+            created_at=str(r["created_at"]),
+            reviewed_at=str(r["reviewed_at"]) if r["reviewed_at"] else None,
+            review_notes=r["review_notes"]
+        )
+        for r in rows
+    ]
+
+@router.post("/shop-change-requests/{request_id}/approve", response_model=ShopChangeRequestDto)
+def approve_shop_change_request(request_id: str, review: Optional[ShopChangeRequestReviewDto] = None):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM shop_change_requests WHERE request_id = ?", (request_id,))
+    req = cursor.fetchone()
+    if not req:
+        conn.close()
+        raise HTTPException(status_code=404, detail="درخواست تغییر اطلاعات یافت نشد")
+
+    if req["status"] != "PENDING":
+        conn.close()
+        raise HTTPException(status_code=400, detail="این درخواست قبلا تعیین تکلیف شده است")
+
+    shop_id = req["shop_id"]
+    updates = []
+    params = []
+    if req["requested_shop_name"]:
+        updates.append("shop_name = ?")
+        params.append(req["requested_shop_name"])
+    if req["requested_phone"]:
+        updates.append("phone = ?")
+        params.append(req["requested_phone"])
+    if req["requested_address"]:
+        updates.append("address = ?")
+        params.append(req["requested_address"])
+    if req["requested_open_time"]:
+        updates.append("open_time = ?")
+        params.append(req["requested_open_time"])
+    if req["requested_close_time"]:
+        updates.append("close_time = ?")
+        params.append(req["requested_close_time"])
+
+    if updates:
+        updates.append("updated_at = CURRENT_TIMESTAMP")
+        params.append(shop_id)
+        sql = f"UPDATE shop_settings SET {', '.join(updates)} WHERE shop_id = ?"
+        cursor.execute(sql, params)
+
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    review_notes = review.review_notes if review and review.review_notes else "تایید و اعمال شد"
+    cursor.execute("""
+    UPDATE shop_change_requests
+    SET status = 'APPROVED', reviewed_at = ?, review_notes = ?
+    WHERE request_id = ?
+    """, (now_str, review_notes, request_id))
+
+    conn.commit()
+    cursor.execute("SELECT * FROM shop_change_requests WHERE request_id = ?", (request_id,))
+    updated_req = cursor.fetchone()
+    conn.close()
+
+    return ShopChangeRequestDto(
+        request_id=updated_req["request_id"],
+        shop_id=updated_req["shop_id"],
+        seller_id=updated_req["seller_id"],
+        requested_shop_name=updated_req["requested_shop_name"],
+        requested_phone=updated_req["requested_phone"],
+        requested_address=updated_req["requested_address"],
+        requested_open_time=updated_req["requested_open_time"],
+        requested_close_time=updated_req["requested_close_time"],
+        reason=updated_req["reason"],
+        status=updated_req["status"],
+        created_at=str(updated_req["created_at"]),
+        reviewed_at=str(updated_req["reviewed_at"]),
+        review_notes=updated_req["review_notes"]
+    )
+
+@router.post("/shop-change-requests/{request_id}/reject", response_model=ShopChangeRequestDto)
+def reject_shop_change_request(request_id: str, review: Optional[ShopChangeRequestReviewDto] = None):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM shop_change_requests WHERE request_id = ?", (request_id,))
+    req = cursor.fetchone()
+    if not req:
+        conn.close()
+        raise HTTPException(status_code=404, detail="درخواست تغییر اطلاعات یافت نشد")
+
+    if req["status"] != "PENDING":
+        conn.close()
+        raise HTTPException(status_code=400, detail="این درخواست قبلا تعیین تکلیف شده است")
+
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    review_notes = review.review_notes if review and review.review_notes else "درخواست مورد تایید قرار نگرفت"
+    cursor.execute("""
+    UPDATE shop_change_requests
+    SET status = 'REJECTED', reviewed_at = ?, review_notes = ?
+    WHERE request_id = ?
+    """, (now_str, review_notes, request_id))
+
+    conn.commit()
+    cursor.execute("SELECT * FROM shop_change_requests WHERE request_id = ?", (request_id,))
+    updated_req = cursor.fetchone()
+    conn.close()
+
+    return ShopChangeRequestDto(
+        request_id=updated_req["request_id"],
+        shop_id=updated_req["shop_id"],
+        seller_id=updated_req["seller_id"],
+        requested_shop_name=updated_req["requested_shop_name"],
+        requested_phone=updated_req["requested_phone"],
+        requested_address=updated_req["requested_address"],
+        requested_open_time=updated_req["requested_open_time"],
+        requested_close_time=updated_req["requested_close_time"],
+        reason=updated_req["reason"],
+        status=updated_req["status"],
+        created_at=str(updated_req["created_at"]),
+        reviewed_at=str(updated_req["reviewed_at"]),
+        review_notes=updated_req["review_notes"]
+    )

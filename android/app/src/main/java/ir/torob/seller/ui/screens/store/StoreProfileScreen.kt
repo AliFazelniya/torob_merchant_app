@@ -9,7 +9,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ir.torob.seller.data.model.ShopChangeRequestCreateDto
 import ir.torob.seller.data.model.ShopUpdateDto
 import ir.torob.seller.ui.theme.*
 import ir.torob.seller.ui.viewmodel.StoreViewModel
@@ -29,11 +33,13 @@ fun StoreProfileScreen(
     val state by viewModel.uiState.collectAsState()
     val shop = state.shop
 
-    var shopName by remember(shop) { mutableStateOf(shop?.shopName ?: "") }
-    var address by remember(shop) { mutableStateOf(shop?.address ?: "") }
-    var phone by remember(shop) { mutableStateOf(shop?.phone ?: "") }
-    var openTime by remember(shop) { mutableStateOf(shop?.openTime ?: "09:00") }
-    var closeTime by remember(shop) { mutableStateOf(shop?.closeTime ?: "21:00") }
+    var showRequestDialog by remember { mutableStateOf(false) }
+    var reqShopName by remember { mutableStateOf("") }
+    var reqPhone by remember { mutableStateOf("") }
+    var reqAddress by remember { mutableStateOf("") }
+    var reqOpenTime by remember { mutableStateOf("") }
+    var reqCloseTime by remember { mutableStateOf("") }
+    var reqReason by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -236,7 +242,100 @@ fun StoreProfileScreen(
                     }
                 }
 
-                // Edit Store Info Card
+                // Request Alert Messages
+                if (state.requestSuccessMessage != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = TorobLightGreen),
+                        border = BorderStroke(1.dp, TorobGreen.copy(alpha = 0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircleOutline,
+                                contentDescription = null,
+                                tint = TorobGreen,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = state.requestSuccessMessage!!,
+                                color = TorobGreen,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                if (state.requestErrorMessage != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = TorobLightRed),
+                        border = BorderStroke(1.dp, TorobRed.copy(alpha = 0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ErrorOutline,
+                                contentDescription = null,
+                                tint = TorobRed,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = state.requestErrorMessage!!,
+                                color = TorobRed,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                // Pending Change Request Banner
+                val latestReq = state.latestChangeRequest
+                if (latestReq != null && latestReq.status == "PENDING") {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = TorobLightAmber),
+                        border = BorderStroke(1.dp, TorobAmber.copy(alpha = 0.5f))
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.HourglassTop,
+                                    contentDescription = null,
+                                    tint = TorobAmber,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "درخواست تغییر اطلاعات در انتظار بررسی پشتیبانی",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Slate900
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "درخواست رسمی شما برای ویرایش مشخصات فروشگاه ثبت گردیده و در حال حاضر توسط تیم پشتیبانی ترب در صف بررسی قرار دارد. پس از تایید، تغییرات به صورت خودکار اعمال خواهند شد.",
+                                fontSize = 11.sp,
+                                color = Slate700,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                }
+
+                // Locked General Store Info Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -247,33 +346,100 @@ fun StoreProfileScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "مشخصات عمومی فروشگاه",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Slate900
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = Slate100,
+                                border = BorderStroke(1.dp, Slate300)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = null,
+                                        tint = Slate600,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = "قفل شده امنیتی",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Slate700
+                                    )
+                                }
+                            }
+                        }
+
                         Text(
-                            text = "مشخصات عمومی فروشگاه",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Slate900
+                            text = "به منظور حفظ امنیت و اصالت داده‌ها، تغییر نام، تلفن، آدرس و ساعات کاری صرفاً از طریق تایید پشتیبانی ترب امکان‌پذیر است.",
+                            fontSize = 11.sp,
+                            color = Slate500,
+                            lineHeight = 16.sp
                         )
 
                         OutlinedTextField(
-                            value = shopName,
-                            onValueChange = { shopName = it },
+                            value = shop?.shopName ?: "",
+                            onValueChange = {},
+                            readOnly = true,
                             label = { Text("نام فروشگاه") },
+                            trailingIcon = {
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400, modifier = Modifier.size(16.dp))
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Slate300,
+                                unfocusedBorderColor = Slate200,
+                                focusedContainerColor = Slate50.copy(alpha = 0.6f),
+                                unfocusedContainerColor = Slate50.copy(alpha = 0.6f)
+                            ),
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
                         )
 
                         OutlinedTextField(
-                            value = phone,
-                            onValueChange = { phone = it },
+                            value = shop?.phone ?: "",
+                            onValueChange = {},
+                            readOnly = true,
                             label = { Text("تلفن تماس فروشگاه") },
+                            trailingIcon = {
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400, modifier = Modifier.size(16.dp))
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Slate300,
+                                unfocusedBorderColor = Slate200,
+                                focusedContainerColor = Slate50.copy(alpha = 0.6f),
+                                unfocusedContainerColor = Slate50.copy(alpha = 0.6f)
+                            ),
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
                         )
 
                         OutlinedTextField(
-                            value = address,
-                            onValueChange = { address = it },
+                            value = shop?.address ?: "",
+                            onValueChange = {},
+                            readOnly = true,
                             label = { Text("آدرس دقیق فروشگاه در تهران") },
+                            trailingIcon = {
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400, modifier = Modifier.size(16.dp))
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Slate300,
+                                unfocusedBorderColor = Slate200,
+                                focusedContainerColor = Slate50.copy(alpha = 0.6f),
+                                unfocusedContainerColor = Slate50.copy(alpha = 0.6f)
+                            ),
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 2,
                             shape = RoundedCornerShape(12.dp)
@@ -284,45 +450,74 @@ fun StoreProfileScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             OutlinedTextField(
-                                value = openTime,
-                                onValueChange = { openTime = it },
+                                value = shop?.openTime ?: "09:00",
+                                onValueChange = {},
+                                readOnly = true,
                                 label = { Text("ساعت بازگشایی (HH:MM)") },
+                                trailingIcon = {
+                                    Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400, modifier = Modifier.size(16.dp))
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Slate300,
+                                    unfocusedBorderColor = Slate200,
+                                    focusedContainerColor = Slate50.copy(alpha = 0.6f),
+                                    unfocusedContainerColor = Slate50.copy(alpha = 0.6f)
+                                ),
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp)
                             )
                             OutlinedTextField(
-                                value = closeTime,
-                                onValueChange = { closeTime = it },
+                                value = shop?.closeTime ?: "21:00",
+                                onValueChange = {},
+                                readOnly = true,
                                 label = { Text("ساعت پایان کار (HH:MM)") },
+                                trailingIcon = {
+                                    Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400, modifier = Modifier.size(16.dp))
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Slate300,
+                                    unfocusedBorderColor = Slate200,
+                                    focusedContainerColor = Slate50.copy(alpha = 0.6f),
+                                    unfocusedContainerColor = Slate50.copy(alpha = 0.6f)
+                                ),
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp)
                             )
                         }
 
+                        val isPending = latestReq?.status == "PENDING"
                         Button(
                             onClick = {
-                                viewModel.updateProfile(
-                                    ShopUpdateDto(
-                                        shopName = shopName,
-                                        address = address,
-                                        phone = phone,
-                                        openTime = openTime,
-                                        closeTime = closeTime
-                                    )
-                                )
+                                reqShopName = shop?.shopName ?: ""
+                                reqPhone = shop?.phone ?: ""
+                                reqAddress = shop?.address ?: ""
+                                reqOpenTime = shop?.openTime ?: "09:00"
+                                reqCloseTime = shop?.closeTime ?: "21:00"
+                                reqReason = ""
+                                viewModel.clearRequestMessages()
+                                showRequestDialog = true
                             },
-                            enabled = !state.isSaving,
+                            enabled = !isPending && !state.isSubmittingRequest,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(48.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = TorobRed),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isPending) Slate300 else TorobRed,
+                                contentColor = PureWhite
+                            ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            if (state.isSaving) {
-                                CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(20.dp))
-                            } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isPending) Icons.Default.HourglassTop else Icons.Default.SupportAgent,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
                                 Text(
-                                    text = "ذخیره تغییرات فروشگاه",
+                                    text = if (isPending) "درخواست تغییر در حال بررسی است" else "درخواست تغییر اطلاعات به پشتیبانی",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = PureWhite
@@ -333,6 +528,139 @@ fun StoreProfileScreen(
                 }
             }
         }
+    }
+
+    // Support Request Dialog
+    if (showRequestDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!state.isSubmittingRequest) showRequestDialog = false
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.SupportAgent,
+                        contentDescription = null,
+                        tint = TorobRed,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "درخواست تغییر مشخصات به پشتیبانی",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Slate900
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "اطلاعات جدید مورد نظر خود را وارد کنید. این اطلاعات پس از بررسی و تایید کارشناسان ترب روی فروشگاه شما اعمال خواهد شد.",
+                        fontSize = 11.sp,
+                        color = Slate600,
+                        lineHeight = 16.sp
+                    )
+
+                    OutlinedTextField(
+                        value = reqShopName,
+                        onValueChange = { reqShopName = it },
+                        label = { Text("نام پیشنهادی فروشگاه") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = reqPhone,
+                        onValueChange = { reqPhone = it },
+                        label = { Text("شماره تلفن جدید فروشگاه") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = reqAddress,
+                        onValueChange = { reqAddress = it },
+                        label = { Text("آدرس دقیق جدید") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = reqOpenTime,
+                            onValueChange = { reqOpenTime = it },
+                            label = { Text("ساعت بازگشایی") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        OutlinedTextField(
+                            value = reqCloseTime,
+                            onValueChange = { reqCloseTime = it },
+                            label = { Text("ساعت پایان کار") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = reqReason,
+                        onValueChange = { reqReason = it },
+                        label = { Text("علت یا توضیحات درخواست (اختیاری)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.submitChangeRequest(
+                            ShopChangeRequestCreateDto(
+                                requestedShopName = reqShopName.ifBlank { null },
+                                requestedPhone = reqPhone.ifBlank { null },
+                                requestedAddress = reqAddress.ifBlank { null },
+                                requestedOpenTime = reqOpenTime.ifBlank { null },
+                                requestedCloseTime = reqCloseTime.ifBlank { null },
+                                reason = reqReason.ifBlank { null }
+                            )
+                        ) { success ->
+                            if (success) {
+                                showRequestDialog = false
+                            }
+                        }
+                    },
+                    enabled = !state.isSubmittingRequest,
+                    colors = ButtonDefaults.buttonColors(containerColor = TorobRed),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    if (state.isSubmittingRequest) {
+                        CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(16.dp))
+                    } else {
+                        Text("ارسال به پشتیبانی", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showRequestDialog = false },
+                    enabled = !state.isSubmittingRequest
+                ) {
+                    Text("انصراف", fontSize = 12.sp, color = Slate600)
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 }
 

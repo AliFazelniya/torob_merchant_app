@@ -97,17 +97,32 @@ def test_is_shop_effectively_open_unit():
 
 
 def test_shop_api_working_hours_enforcement(client, auth_headers):
-    # Set shop hours to a range that is definitely closed (e.g. 01:00 to 01:05)
-    update_resp = client.put("/api/seller/shop", headers=auth_headers, json={
+    # Direct attempt to change hours via PUT /api/seller/shop must fail with 400
+    direct_fail = client.put("/api/seller/shop", headers=auth_headers, json={
         "open_time": "01:00",
-        "close_time": "01:05",
+        "close_time": "01:05"
+    })
+    assert direct_fail.status_code == 400
+    assert "ثبت درخواست رسمی به پشتیبانی" in direct_fail.json()["detail"]
+
+    # Submit official change request for non-working hours (01:00 to 01:05)
+    req_resp = client.post("/api/seller/shop/change-requests", headers=auth_headers, json={
+        "requested_open_time": "01:00",
+        "requested_close_time": "01:05",
+        "reason": "تست ساعات غیرکاری"
+    })
+    assert req_resp.status_code == 200
+    req_id = req_resp.json()["request_id"]
+
+    # Support admin approves the request
+    appr_resp = client.post(f"/api/admin/shop-change-requests/{req_id}/approve")
+    assert appr_resp.status_code == 200
+
+    # Ensure is_open is False
+    client.put("/api/seller/shop", headers=auth_headers, json={
         "is_open": False,
         "holiday_mode": False
     })
-    assert update_resp.status_code == 200
-    shop_data = update_resp.json()
-    assert shop_data["open_time"] == "01:00"
-    assert shop_data["close_time"] == "01:05"
 
     # Now fetch shop profile -> is_open MUST be False!
     get_resp = client.get("/api/seller/shop", headers=auth_headers)
@@ -115,6 +130,8 @@ def test_shop_api_working_hours_enforcement(client, auth_headers):
     profile = get_resp.json()
     assert profile["is_open"] is False
     assert profile["is_within_working_hours"] is False
+    assert profile["open_time"] == "01:00"
+    assert profile["close_time"] == "01:05"
 
     # Attempt to toggle shop open when outside working hours -> MUST return 400
     toggle_resp = client.post("/api/seller/shop/toggle-status", headers=auth_headers)
@@ -128,12 +145,20 @@ def test_shop_api_working_hours_enforcement(client, auth_headers):
     assert put_open_resp.status_code == 400
     assert "خارج از ساعات کاری" in put_open_resp.json()["detail"]
 
-    # Now update hours to 24h (00:00 to 23:59)
-    allow_resp = client.put("/api/seller/shop", headers=auth_headers, json={
-        "open_time": "00:00",
-        "close_time": "23:59"
+    # Now update hours to 24h (00:00 to 23:59) via change request
+    req2_resp = client.post("/api/seller/shop/change-requests", headers=auth_headers, json={
+        "requested_open_time": "00:00",
+        "requested_close_time": "23:59",
+        "reason": "تست ۲۴ ساعته"
     })
+    assert req2_resp.status_code == 200
+    req2_id = req2_resp.json()["request_id"]
+    appr2_resp = client.post(f"/api/admin/shop-change-requests/{req2_id}/approve")
+    assert appr2_resp.status_code == 200
+
+    allow_resp = client.get("/api/seller/shop", headers=auth_headers)
     assert allow_resp.status_code == 200
+    assert allow_resp.json()["is_within_working_hours"] is True
     assert allow_resp.json()["is_within_working_hours"] is True
 
     # Now that we are within working hours, toggle can open the shop!

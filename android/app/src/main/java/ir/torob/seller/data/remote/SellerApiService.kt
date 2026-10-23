@@ -26,6 +26,12 @@ interface SellerApiService {
     @POST("seller/shop/toggle-status")
     suspend fun toggleShopStatus(): Response<ShopDto>
 
+    @POST("seller/shop/change-requests")
+    suspend fun submitChangeRequest(@Body request: ShopChangeRequestCreateDto): Response<ShopChangeRequestDto>
+
+    @GET("seller/shop/change-requests/latest")
+    suspend fun getLatestChangeRequest(): Response<ShopChangeRequestDto>
+
     // --- Inquiries ---
     @GET("seller/inquiries")
     suspend fun getInquiries(@Query("status") status: String? = null): Response<List<InquiryDto>>

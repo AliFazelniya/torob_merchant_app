@@ -150,6 +150,27 @@ def init_db():
     )
     """)
 
+    # 9. Shop Change Requests Table (Support Approval Workflow)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS shop_change_requests (
+        request_id TEXT PRIMARY KEY,
+        shop_id TEXT NOT NULL,
+        seller_id TEXT NOT NULL,
+        requested_shop_name TEXT,
+        requested_phone TEXT,
+        requested_address TEXT,
+        requested_open_time TEXT,
+        requested_close_time TEXT,
+        reason TEXT,
+        status TEXT NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED'
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        reviewed_at TIMESTAMP,
+        review_notes TEXT,
+        FOREIGN KEY (shop_id) REFERENCES shop_settings(shop_id),
+        FOREIGN KEY (seller_id) REFERENCES sellers(seller_id)
+    )
+    """)
+
     # Seed default scheduler configs
     cursor.execute("""
     INSERT OR IGNORE INTO scheduler_configs (config_key, config_value, description)

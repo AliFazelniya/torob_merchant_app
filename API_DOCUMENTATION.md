@@ -146,6 +146,44 @@ A shop can operate under 3 distinct operational scenarios:
 ### 3.3. Toggle Shop Status (Quick Open/Close Switch)
 - **Method & Endpoint**: `POST /api/seller/shop/toggle-status`
 
+### 3.4. Formal Shop Change Request (Support Approval Workflow)
+To ensure data security and prevent unauthorized modifications, general shop details (`shop_name`, `phone`, `address`, `open_time`, `close_time`) are locked and cannot be directly modified via `PUT /api/seller/shop`. Attempting direct modifications returns `400 Bad Request`. Sellers submit a formal change request to Torob Support.
+
+#### Submit Change Request
+- **Method & Endpoint**: `POST /api/seller/shop/change-requests`
+- **Request Body**:
+```json
+{
+  "requested_shop_name": "Takht-e Jamshid Mobile VIP",
+  "requested_phone": "02199991111",
+  "requested_address": "Tehran, Jomhouri St., Charsou Mall, 2nd Floor",
+  "requested_open_time": "09:30",
+  "requested_close_time": "21:30",
+  "reason": "Relocated to new branch in Charsou Mall"
+}
+```
+
+#### Get Latest Change Request Status
+- **Method & Endpoint**: `GET /api/seller/shop/change-requests/latest`
+- **Successful Response (200 OK)**:
+```json
+{
+  "request_id": "req_a47f912e8b",
+  "shop_id": "shop_51d0c1a6edf81ba759726bab",
+  "seller_id": "seller_test_001",
+  "requested_shop_name": "Takht-e Jamshid Mobile VIP",
+  "requested_phone": "02199991111",
+  "requested_address": "Tehran, Jomhouri St., Charsou Mall, 2nd Floor",
+  "requested_open_time": "09:30",
+  "requested_close_time": "21:30",
+  "reason": "Relocated to new branch in Charsou Mall",
+  "status": "PENDING",
+  "created_at": "2026-10-23 08:30:00",
+  "reviewed_at": null,
+  "review_notes": null
+}
+```
+
 ---
 
 ## 4. Inquiries & Stock Reporting
