@@ -27,6 +27,8 @@ def _format_inquiry_row(row) -> InquiryDto:
 
     remaining_seconds = max(0, int((expires_dt - now).total_seconds()))
 
+    keys = row.keys() if hasattr(row, "keys") else []
+
     return InquiryDto(
         inquiry_id=row["inquiry_id"],
         tracking_code=row["tracking_code"],
@@ -43,23 +45,34 @@ def _format_inquiry_row(row) -> InquiryDto:
         status=row["status"],
         created_at=row["created_at"],
         expires_at=row["expires_at"],
-        remaining_seconds=remaining_seconds
+        remaining_seconds=remaining_seconds,
+        decline_reason=row["decline_reason"] if "decline_reason" in keys else None,
+        response_price=row["offered_price_toman"] if "offered_price_toman" in keys else None,
+        response_in_stock=bool(row["is_in_stock"]) if ("is_in_stock" in keys and row["is_in_stock"] is not None) else None,
+        response_notes=row["response_notes"] if "response_notes" in keys else None
     )
 
 @router.get("", response_model=List[InquiryDto])
 def list_inquiries(
-    status: Optional[str] = Query(None, description="Filter: ACTIVE, ANSWERED, EXPIRED"),
+    status: Optional[str] = Query(None, description="Filter: ACTIVE, ANSWERED, OUT_OF_STOCK, DECLINED, EXPIRED, or HISTORY"),
     seller: SellerDto = Depends(get_current_seller)
 ):
     conn = get_db()
     cursor = conn.cursor()
 
     if status:
-        cursor.execute("""
-        SELECT * FROM inquiries
-        WHERE shop_id = ? AND status = ?
-        ORDER BY created_at DESC
-        """, (seller.shop_id, status.upper()))
+        if status.upper() == "HISTORY":
+            cursor.execute("""
+            SELECT * FROM inquiries
+            WHERE shop_id = ? AND status != 'ACTIVE'
+            ORDER BY created_at DESC
+            """, (seller.shop_id,))
+        else:
+            cursor.execute("""
+            SELECT * FROM inquiries
+            WHERE shop_id = ? AND status = ?
+            ORDER BY created_at DESC
+            """, (seller.shop_id, status.upper()))
     else:
         cursor.execute("""
         SELECT * FROM inquiries
@@ -101,14 +114,17 @@ def respond_to_inquiry(
     existing_resp = cursor.fetchone()
     if existing_resp:
         conn.close()
+        existing_keys = existing_resp.keys() if hasattr(existing_resp, "keys") else []
         return InquiryResponseDto(
             response_id=existing_resp["response_id"],
             client_response_id=existing_resp["client_response_id"],
             inquiry_id=existing_resp["inquiry_id"],
             offered_price_toman=existing_resp["offered_price_toman"],
             is_in_stock=bool(existing_resp["is_in_stock"]),
-            stock_count=existing_resp["stock_count"] if "stock_count" in existing_resp.keys() else 1,
+            stock_count=existing_resp["stock_count"] if "stock_count" in existing_keys else 1,
             notes=existing_resp["notes"],
+            status=existing_resp["status"] if "status" in existing_keys else None,
+            decline_reason=existing_resp["decline_reason"] if "decline_reason" in existing_keys else None,
             submitted_at=existing_resp["submitted_at"],
             received_at=existing_resp["received_at"],
             is_duplicate=True
@@ -125,6 +141,21 @@ def respond_to_inquiry(
         conn.close()
         raise HTTPException(status_code=400, detail="مهلت پاسخ‌گویی به این استعلام به پایان رسیده و منقضی شده است")
 
+    # Determine status & decline reason
+    target_status = payload.status
+    decline_reason = payload.decline_reason
+
+    if not target_status:
+        if payload.notes and (payload.notes.startswith("رد استعلام") or "رد استعلام" in payload.notes):
+            target_status = "DECLINED"
+        elif not payload.is_in_stock:
+            target_status = "OUT_OF_STOCK"
+        else:
+            target_status = "ANSWERED"
+
+    if target_status == "DECLINED" and not decline_reason:
+        decline_reason = payload.notes
+
     # 3. Save response
     response_id = f"resp_{uuid.uuid4().hex[:10]}"
     now_iso = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -132,17 +163,24 @@ def respond_to_inquiry(
     cursor.execute("""
     INSERT INTO inquiry_responses (
         response_id, client_response_id, inquiry_id, seller_id, shop_id,
-        offered_price_toman, is_in_stock, stock_count, notes, submitted_at, received_at
+        offered_price_toman, is_in_stock, stock_count, notes, status, decline_reason, submitted_at, received_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         response_id, payload.client_response_id, inquiry_id, seller.seller_id, seller.shop_id,
         payload.offered_price_toman, 1 if payload.is_in_stock else 0, payload.stock_count or 1, payload.notes,
-        payload.submitted_at, now_iso
+        target_status, decline_reason, payload.submitted_at, now_iso
     ))
 
-    # 4. Mark inquiry as ANSWERED
-    cursor.execute("UPDATE inquiries SET status = 'ANSWERED' WHERE inquiry_id = ?", (inquiry_id,))
+    # 4. Mark inquiry with status and response details
+    cursor.execute("""
+    UPDATE inquiries
+    SET status = ?, decline_reason = ?, offered_price_toman = ?, is_in_stock = ?, response_notes = ?
+    WHERE inquiry_id = ?
+    """, (
+        target_status, decline_reason, payload.offered_price_toman,
+        1 if payload.is_in_stock else 0, payload.notes, inquiry_id
+    ))
 
     # 5. Update timeline and calculate response time
     cursor.execute("SELECT registered_at FROM inquiry_timelines WHERE inquiry_id = ?", (inquiry_id,))
@@ -173,6 +211,8 @@ def respond_to_inquiry(
         is_in_stock=payload.is_in_stock,
         stock_count=payload.stock_count or 1,
         notes=payload.notes,
+        status=target_status,
+        decline_reason=decline_reason,
         submitted_at=payload.submitted_at,
         received_at=now_iso,
         is_duplicate=False
@@ -202,14 +242,17 @@ def batch_sync_responses(
         existing = cursor.fetchone()
         if existing:
             duplicate_count += 1
+            existing_keys = existing.keys() if hasattr(existing, "keys") else []
             results.append(InquiryResponseDto(
                 response_id=existing["response_id"],
                 client_response_id=existing["client_response_id"],
                 inquiry_id=existing["inquiry_id"],
                 offered_price_toman=existing["offered_price_toman"],
                 is_in_stock=bool(existing["is_in_stock"]),
-                stock_count=existing["stock_count"] if "stock_count" in existing.keys() else 1,
+                stock_count=existing["stock_count"] if "stock_count" in existing_keys else 1,
                 notes=existing["notes"],
+                status=existing["status"] if "status" in existing_keys else None,
+                decline_reason=existing["decline_reason"] if "decline_reason" in existing_keys else None,
                 submitted_at=existing["submitted_at"],
                 received_at=existing["received_at"],
                 is_duplicate=True
@@ -222,19 +265,41 @@ def batch_sync_responses(
         if not inq_row:
             continue
 
+        # Determine status & decline reason
+        target_status = item.status
+        decline_reason = item.decline_reason
+
+        if not target_status:
+            if item.notes and (item.notes.startswith("رد استعلام") or "رد استعلام" in item.notes):
+                target_status = "DECLINED"
+            elif not item.is_in_stock:
+                target_status = "OUT_OF_STOCK"
+            else:
+                target_status = "ANSWERED"
+
+        if target_status == "DECLINED" and not decline_reason:
+            decline_reason = item.notes
+
         resp_id = f"resp_{uuid.uuid4().hex[:10]}"
         cursor.execute("""
         INSERT INTO inquiry_responses (
             response_id, client_response_id, inquiry_id, seller_id, shop_id,
-            offered_price_toman, is_in_stock, stock_count, notes, submitted_at, received_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            offered_price_toman, is_in_stock, stock_count, notes, status, decline_reason, submitted_at, received_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             resp_id, item.client_response_id, item.inquiry_id, seller.seller_id, seller.shop_id,
             item.offered_price_toman, 1 if item.is_in_stock else 0, item.stock_count or 1, item.notes,
-            item.submitted_at, now_iso
+            target_status, decline_reason, item.submitted_at, now_iso
         ))
 
-        cursor.execute("UPDATE inquiries SET status = 'ANSWERED' WHERE inquiry_id = ?", (item.inquiry_id,))
+        cursor.execute("""
+        UPDATE inquiries
+        SET status = ?, decline_reason = ?, offered_price_toman = ?, is_in_stock = ?, response_notes = ?
+        WHERE inquiry_id = ?
+        """, (
+            target_status, decline_reason, item.offered_price_toman,
+            1 if item.is_in_stock else 0, item.notes, item.inquiry_id
+        ))
         cursor.execute("UPDATE inquiry_timelines SET seller_responded_at = ? WHERE inquiry_id = ?", (now_iso, item.inquiry_id))
 
         synced_count += 1
@@ -246,6 +311,8 @@ def batch_sync_responses(
             is_in_stock=item.is_in_stock,
             stock_count=item.stock_count or 1,
             notes=item.notes,
+            status=target_status,
+            decline_reason=decline_reason,
             submitted_at=item.submitted_at,
             received_at=now_iso,
             is_duplicate=False

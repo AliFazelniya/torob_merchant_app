@@ -81,24 +81,26 @@ class InquiryAlertService : Service() {
 
         val inquiryId = intent?.getStringExtra("inquiry_id") ?: "inq_01"
         val title = intent?.getStringExtra("title") ?: "استعلام فوری در ترب"
-        val body = intent?.getStringExtra("body") ?: "خریدار منتظر پاسخ قیمت و موجودی شماست (مهلت ۱۰ دقیقه)"
+        val body = intent?.getStringExtra("body") ?: "خریدار منتظر پاسخ قیمت و موجودی شماست (مهلت ۲ دقیقه)"
+        val durationSeconds = intent?.getIntExtra("duration_seconds", 120) ?: 120
 
-        startAlert(inquiryId, title, body)
+        startAlert(inquiryId, title, body, durationSeconds)
         return START_NOT_STICKY
     }
 
-    private fun startAlert(inquiryId: String, title: String, body: String) {
-        acquireWakeLock()
+    private fun startAlert(inquiryId: String, title: String, body: String, durationSeconds: Int = 120) {
+        acquireWakeLock(durationSeconds)
         createSilentCallChannel()
 
-        // 1. Start continuous ringtone and vibration directly
-        InquiryRingtoneManager.startRinging(applicationContext, maxDurationSec = 30)
+        // 1. Start continuous ringtone and vibration directly for 2 minutes
+        InquiryRingtoneManager.startRinging(applicationContext, maxDurationSec = durationSeconds)
 
         // 2. Intent to open the full-screen Incoming Call UI
         val callIntent = Intent(this, IncomingInquiryActivity::class.java).apply {
             putExtra("inquiry_id", inquiryId)
             putExtra("title", title)
             putExtra("body", body)
+            putExtra("duration_seconds", durationSeconds)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
                     Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
@@ -161,14 +163,14 @@ class InquiryAlertService : Service() {
         }
     }
 
-    private fun acquireWakeLock() {
+    private fun acquireWakeLock(durationSeconds: Int = 120) {
         try {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             wakeLock = pm.newWakeLock(
                 PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
                 "TorobSeller:AlertWakeLock"
             ).apply {
-                acquire(45000) // 45 seconds max
+                acquire((durationSeconds + 10) * 1000L)
             }
         } catch (e: Exception) {
             Log.e(TAG, "WakeLock acquisition failed", e)

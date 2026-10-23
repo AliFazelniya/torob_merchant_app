@@ -46,6 +46,8 @@ fun InquiriesListScreen(
     val pendingSyncCount by viewModel.pendingSyncCount.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
 
+    val isServerConnected by viewModel.isServerConnected.collectAsState()
+
     var filterType by remember { mutableStateOf("ALL") }
 
     // Periodic silent sync for incoming inquiries
@@ -96,7 +98,7 @@ fun InquiriesListScreen(
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    if (activeInquiries.isNotEmpty()) {
+                    if (activeInquiries.isNotEmpty() && isOnline && isServerConnected) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             shape = RoundedCornerShape(12.dp),
@@ -145,7 +147,7 @@ fun InquiriesListScreen(
         }
 
         // Interactive Summary Cards (All, Urgent, Normal)
-        if (activeInquiries.isNotEmpty()) {
+        if (activeInquiries.isNotEmpty() && isOnline && isServerConnected) {
             Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                 InquirySummaryCards(
                     activeCount = activeInquiries.size,
@@ -167,14 +169,14 @@ fun InquiriesListScreen(
                 }
             }
 
-            errorMessage != null && activeInquiries.isEmpty() -> {
+            !isOnline || !isServerConnected -> {
                 EmptyStateView(
                     icon = Icons.Default.CloudOff,
                     iconTint = TorobError,
                     iconBgColor = TorobErrorLight,
-                    title = "خطا در دریافت اطلاعات",
-                    description = errorMessage ?: "امکان اتصال به سرور وجود ندارد. لطفاً اتصال اینترنت خود را بررسی نمایید.",
-                    actionButtonText = "تلاش مجدد",
+                    title = "عدم ارتباط با سرور ترب",
+                    description = "جهت حفظ امنیت اطلاعات فروشندگان، مشاهده استعلام‌ها بدون برقراری ارتباط با سرور امکان‌پذیر نیست.",
+                    actionButtonText = "تلاش مجدد برای اتصال",
                     onActionClick = viewModel::refresh,
                     modifier = Modifier.fillMaxSize()
                 )

@@ -50,13 +50,19 @@ class InquiryViewModel(private val repository: InquiryRepository) : ViewModel() 
     private val _historyFilter = MutableStateFlow("ALL")
     val historyFilter: StateFlow<String> = _historyFilter.asStateFlow()
 
+    private val _isServerConnected = MutableStateFlow(true)
+    val isServerConnected: StateFlow<Boolean> = _isServerConnected.asStateFlow()
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val historyInquiries: StateFlow<List<InquiryEntity>> = _historyFilter
         .flatMapLatest { filter ->
             when (filter) {
+                "ALL" -> repository.getHistoryInquiries("ALL")
                 "ANSWERED" -> repository.getLocalInquiries("ANSWERED")
+                "OUT_OF_STOCK" -> repository.getLocalInquiries("OUT_OF_STOCK")
+                "DECLINED" -> repository.getLocalInquiries("DECLINED")
                 "EXPIRED" -> repository.getLocalInquiries("EXPIRED")
-                else -> repository.getHistoryInquiries()
+                else -> repository.getHistoryInquiries(filter)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -84,8 +90,12 @@ class InquiryViewModel(private val repository: InquiryRepository) : ViewModel() 
         _errorMessage.value = null
         viewModelScope.launch {
             repository.fetchRemoteInquiries()
+                .onSuccess {
+                    _isServerConnected.value = true
+                }
                 .onFailure {
-                    _errorMessage.value = it.message ?: "عدم اتصال به سرور (داده‌های کش نمایش داده می‌شوند)"
+                    _isServerConnected.value = false
+                    _errorMessage.value = "عدم ارتباط با سرور ترب. جهت امنیت اطلاعات، استعلام‌ها بدون ارتباط با سرور نمایش داده نمی‌شوند."
                 }
             _isLoading.value = false
         }

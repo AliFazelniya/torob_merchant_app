@@ -83,7 +83,7 @@ class InquiryScheduler:
         # Find all ACTIVE inquiries
         cursor.execute("""
         SELECT i.inquiry_id, i.shop_id, i.product_title, i.created_at,
-               t.initial_push_at, t.reminder_push_at
+               t.initial_push_at, t.reminder_push_at, t.urgent_call_push_at
         FROM inquiries i
         LEFT JOIN inquiry_timelines t ON i.inquiry_id = t.inquiry_id
         WHERE i.status = 'ACTIVE'
@@ -115,7 +115,7 @@ class InquiryScheduler:
                 conn.commit()
 
                 # Dispatch Reminder Push
-                rem_title = "یادآوری فوری استعلام"
+                rem_title = "یادآوری استعلام قیمت و موجودی"
                 rem_body = f"فرصت پاسخ‌گویی به استعلام «{product_title}» رو به اتمام است! لطفا بررسی کنید."
                 rem_data = {
                     "inquiry_id": str(inquiry_id),
@@ -132,7 +132,37 @@ class InquiryScheduler:
                 )
                 logger.info(f"Dispatched 5-min reminder for inquiry {inquiry_id}")
 
-            # 2. Check Expiration (+10 minutes)
+            # 2. Check Urgent Call (2 minutes remaining before expiration, e.g. at 8 minutes)
+            urgent_threshold = max(0, expiry_secs - 120)
+            if elapsed_seconds >= urgent_threshold and not inq["urgent_call_push_at"] and elapsed_seconds < expiry_secs:
+                urgent_iso = now.strftime("%Y-%m-%d %H:%M:%S")
+                cursor.execute("""
+                UPDATE inquiry_timelines
+                SET urgent_call_push_at = ?
+                WHERE inquiry_id = ?
+                """, (urgent_iso, inquiry_id))
+                conn.commit()
+
+                urgent_title = "تماس فوری استعلام ترب"
+                urgent_body = f"فقط ۲ دقیقه تا پایان مهلت پاسخ به استعلام «{product_title}» باقی مانده است!"
+                urgent_data = {
+                    "inquiry_id": str(inquiry_id),
+                    "action": "open_inquiry_call",
+                    "type": "URGENT_CALL",
+                    "product_title": str(product_title),
+                    "duration_seconds": "120"
+                }
+                await push_service.send_to_shop(
+                    shop_id=shop_id,
+                    inquiry_id=inquiry_id,
+                    notification_type="URGENT_CALL",
+                    title=urgent_title,
+                    body=urgent_body,
+                    data_payload=urgent_data
+                )
+                logger.info(f"Dispatched URGENT_CALL alert for inquiry {inquiry_id} (remaining <= 120s)")
+
+            # 3. Check Expiration (+10 minutes)
             if elapsed_seconds >= expiry_secs:
                 expire_iso = now.strftime("%Y-%m-%d %H:%M:%S")
                 alt_shop_id = self.find_alternative_shop(shop_id)

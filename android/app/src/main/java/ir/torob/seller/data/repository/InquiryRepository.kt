@@ -17,47 +17,44 @@ class InquiryRepository(private val context: Context) {
     private val db = SellerDatabase.getDatabase(context)
     private val inquiryDao = db.inquiryDao()
     private val syncQueueDao = db.syncQueueDao()
+    private val authRepo = AuthRepository(context)
 
     private val isoFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
 
     fun getLocalInquiries(status: String? = null): Flow<List<InquiryEntity>> {
+        val shopId = authRepo.getShopId()
         return if (status.isNullOrBlank()) {
-            inquiryDao.getAllInquiries()
+            inquiryDao.getAllInquiries(shopId)
         } else {
-            inquiryDao.getInquiriesByStatus(status.uppercase())
+            inquiryDao.getInquiriesByStatus(shopId, status.uppercase())
         }
     }
 
-    fun getHistoryInquiries(): Flow<List<InquiryEntity>> = inquiryDao.getHistoryInquiries()
+    fun getHistoryInquiries(statusFilter: String? = null): Flow<List<InquiryEntity>> {
+        val shopId = authRepo.getShopId()
+        return if (statusFilter.isNullOrBlank() || statusFilter.uppercase() == "ALL") {
+            inquiryDao.getHistoryInquiries(shopId)
+        } else {
+            inquiryDao.getHistoryInquiriesFiltered(shopId, statusFilter.uppercase())
+        }
+    }
+
+    suspend fun clearAllLocalData() {
+        inquiryDao.clearAllInquiries()
+        syncQueueDao.clearAll()
+    }
 
     suspend fun fetchRemoteInquiries(status: String? = null): Result<List<InquiryDto>> {
+        val shopId = authRepo.getShopId()
         return try {
             val resp = api.getInquiries(status)
             if (resp.isSuccessful && resp.body() != null) {
                 val list = resp.body()!!
-                // Cache into Room
-                val entities = list.map { dto ->
-                    InquiryEntity(
-                        inquiryId = dto.inquiryId,
-                        trackingCode = dto.trackingCode,
-                        shopId = dto.shopId,
-                        productId = dto.productId,
-                        productTitle = dto.productTitle,
-                        productImageUrl = dto.productImageUrl,
-                        categoryName = dto.categoryName,
-                        recordedPriceToman = dto.recordedPriceToman,
-                        customerName = dto.customerName,
-                        customerPhone = dto.customerPhone,
-                        inquiryType = dto.inquiryType,
-                        userNote = dto.userNote,
-                        status = dto.status,
-                        createdAt = dto.createdAt,
-                        expiresAt = dto.expiresAt,
-                        remainingSeconds = dto.remainingSeconds
-                    )
-                }
+                // Clear old cache for this shop so stale inquiries or other accounts' data never persist
+                inquiryDao.clearInquiriesForShop(shopId)
+                val entities = list.map { it.toEntity() }
                 inquiryDao.insertInquiries(entities)
                 Result.success(list)
             } else {
@@ -69,7 +66,8 @@ class InquiryRepository(private val context: Context) {
     }
 
     suspend fun getInquiryById(inquiryId: String): InquiryEntity? {
-        val cached = inquiryDao.getInquiryById(inquiryId)
+        val shopId = authRepo.getShopId()
+        val cached = inquiryDao.getInquiryById(inquiryId, shopId)
         if (cached != null) return cached
 
         // Fetch remote if not in cache
@@ -77,56 +75,12 @@ class InquiryRepository(private val context: Context) {
             val resp = api.getInquiryDetail(inquiryId)
             if (resp.isSuccessful && resp.body() != null) {
                 val dto = resp.body()!!
-                val entity = InquiryEntity(
-                    inquiryId = dto.inquiryId,
-                    trackingCode = dto.trackingCode,
-                    shopId = dto.shopId,
-                    productId = dto.productId,
-                    productTitle = dto.productTitle,
-                    productImageUrl = dto.productImageUrl,
-                    categoryName = dto.categoryName,
-                    recordedPriceToman = dto.recordedPriceToman,
-                    customerName = dto.customerName,
-                    customerPhone = dto.customerPhone,
-                    inquiryType = dto.inquiryType,
-                    userNote = dto.userNote,
-                    status = dto.status,
-                    createdAt = dto.createdAt,
-                    expiresAt = dto.expiresAt,
-                    remainingSeconds = dto.remainingSeconds
-                )
+                val entity = dto.toEntity()
                 inquiryDao.insertInquiry(entity)
                 return entity
             }
         } catch (e: Exception) {
             // Offline fallback
-        }
-
-        if (inquiryId == "inq_01" || inquiryId.startsWith("test_")) {
-            val demoEntity = InquiryEntity(
-                inquiryId = inquiryId,
-                trackingCode = "TRB-98721",
-                shopId = "shop_test",
-                productId = "prod_iphone15pro",
-                productTitle = "گوشی موبایل اپل مدل iPhone 15 Pro ظرفیت 256 گیگابایت",
-                productImageUrl = "https://torob.com/static/images/mock/iphone15.jpg",
-                categoryName = "موبایل و تبلت",
-                recordedPriceToman = 68500000L,
-                customerName = "خریدار استعلام ترب",
-                customerPhone = "0912***4567",
-                inquiryType = "قیمت و موجودی فوری",
-                userNote = "سلام، در صورت موجودی رنگ خاکستری تیتانیوم امروز سفارش می‌دم.",
-                status = "ACTIVE",
-                createdAt = "همین الان",
-                expiresAt = "۱۰ دقیقه دیگر",
-                remainingSeconds = 600
-            )
-            try {
-                inquiryDao.insertInquiry(demoEntity)
-            } catch (e: Exception) {
-                // Ignore
-            }
-            return demoEntity
         }
 
         return null
@@ -143,10 +97,14 @@ class InquiryRepository(private val context: Context) {
         priceToman: Long,
         inStock: Boolean,
         notes: String?,
-        stockCount: Int = 1
+        stockCount: Int = 1,
+        status: String? = null,
+        declineReason: String? = null
     ): Result<SyncState> {
         val clientUuid = UUID.randomUUID().toString()
         val submittedAtIso = isoFormat.format(Date())
+
+        val targetStatus = status ?: if (inStock) "ANSWERED" else "OUT_OF_STOCK"
 
         // 1. Immediately persist locally in Room DB
         val queueItem = SyncQueueEntity(
@@ -156,11 +114,20 @@ class InquiryRepository(private val context: Context) {
             isInStock = inStock,
             stockCount = stockCount,
             notes = notes,
+            status = targetStatus,
+            declineReason = declineReason,
             submittedAt = submittedAtIso,
             syncState = SyncState.SAVED_ON_PHONE
         )
         syncQueueDao.insertSyncItem(queueItem)
-        inquiryDao.updateInquiryStatus(inquiryId, "ANSWERED")
+        inquiryDao.updateInquiryResponse(
+            id = inquiryId,
+            status = targetStatus,
+            declineReason = declineReason,
+            price = priceToman,
+            inStock = inStock,
+            notes = notes
+        )
 
         // 2. Attempt immediate network submission
         return try {
@@ -170,6 +137,8 @@ class InquiryRepository(private val context: Context) {
                 isInStock = inStock,
                 stockCount = stockCount,
                 notes = notes,
+                status = targetStatus,
+                declineReason = declineReason,
                 submittedAt = submittedAtIso
             )
             val resp = api.submitResponse(inquiryId, request)
@@ -178,12 +147,10 @@ class InquiryRepository(private val context: Context) {
                 syncQueueDao.updateSyncState(clientUuid, SyncState.SYNCED_ON_SERVER)
                 Result.success(SyncState.SYNCED_ON_SERVER)
             } else {
-                // Server returned error (e.g. 500, or temporary server issue)
                 scheduleBackgroundSync()
                 Result.success(SyncState.SAVED_ON_PHONE)
             }
         } catch (e: Exception) {
-            // Network failure (offline, timeout) -> Enqueue WorkManager for safe retry
             scheduleBackgroundSync()
             Result.success(SyncState.SAVED_ON_PHONE)
         }
@@ -201,6 +168,8 @@ class InquiryRepository(private val context: Context) {
                 isInStock = it.isInStock,
                 stockCount = it.stockCount,
                 notes = it.notes,
+                status = it.status,
+                declineReason = it.declineReason,
                 submittedAt = it.submittedAt
             )
         }
@@ -209,7 +178,6 @@ class InquiryRepository(private val context: Context) {
             val resp = api.batchSyncResponses(BatchSyncRequest(batchItems))
             if (resp.isSuccessful && resp.body() != null) {
                 val batchResult = resp.body()!!
-                // Mark processed items as SYNCED_ON_SERVER
                 for (item in pending) {
                     syncQueueDao.updateSyncState(item.clientResponseId, SyncState.SYNCED_ON_SERVER)
                 }

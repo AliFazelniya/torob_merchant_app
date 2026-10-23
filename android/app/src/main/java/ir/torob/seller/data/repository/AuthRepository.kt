@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import ir.torob.seller.data.model.*
 import ir.torob.seller.data.remote.ApiClient
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -84,5 +85,12 @@ class AuthRepository(private val context: Context) {
     fun logout() {
         prefs.edit().clear().apply()
         _isLoggedIn.value = false
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                InquiryRepository(context).clearAllLocalData()
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
     }
 }

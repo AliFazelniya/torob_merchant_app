@@ -153,7 +153,8 @@ class IncomingInquiryActivity : ComponentActivity() {
                                     priceToman = 0L,
                                     inStock = false,
                                     stockCount = 0,
-                                    notes = "عدم موجودی در انبار"
+                                    notes = "عدم موجودی در انبار",
+                                    status = "OUT_OF_STOCK"
                                 )
                                 withContext(Dispatchers.Main) {
                                     Toast.makeText(applicationContext, "عدم موجودی کالا ثبت شد", Toast.LENGTH_SHORT).show()
@@ -170,6 +171,7 @@ class IncomingInquiryActivity : ComponentActivity() {
                         stopRingingAndAlert()
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
+                                val declineTitle = if (customNote.isNotBlank()) "${reason.title} - $customNote" else reason.title
                                 val declineNote = buildString {
                                     append("رد استعلام: [${reason.code}] ${reason.title}")
                                     if (customNote.isNotBlank()) {
@@ -181,7 +183,9 @@ class IncomingInquiryActivity : ComponentActivity() {
                                     priceToman = 0L,
                                     inStock = false,
                                     stockCount = 0,
-                                    notes = declineNote
+                                    notes = declineNote,
+                                    status = "DECLINED",
+                                    declineReason = declineTitle
                                 )
                                 if (closeShop && reason == DeclineReason.STORE_CLOSED) {
                                     ShopRepository(applicationContext).updateShopProfile(
@@ -276,7 +280,7 @@ fun SmartInquiryCallScreen(
 ) {
     val context = LocalContext.current
     var inquiry by remember { mutableStateOf<InquiryEntity?>(null) }
-    var remainingSeconds by remember { mutableLongStateOf(600L) }
+    var remainingSeconds by remember { mutableLongStateOf(120L) }
     var isSubmitting by remember { mutableStateOf(false) }
 
     // Bottom Sheet for Declining Inquiry
@@ -292,7 +296,7 @@ fun SmartInquiryCallScreen(
         if (item != null) {
             inquiry = item
             if (item.remainingSeconds > 0) {
-                remainingSeconds = item.remainingSeconds
+                remainingSeconds = minOf(120L, item.remainingSeconds)
             }
         }
     }
@@ -302,6 +306,8 @@ fun SmartInquiryCallScreen(
         if (remainingSeconds > 0) {
             delay(1000L)
             remainingSeconds -= 1
+        } else {
+            onDismiss()
         }
     }
 

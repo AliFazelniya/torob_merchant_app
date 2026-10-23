@@ -18,6 +18,8 @@ data class SyncQueueEntity(
     val isInStock: Boolean,
     val stockCount: Int = 1,
     val notes: String?,
+    val status: String? = null,
+    val declineReason: String? = null,
     val submittedAt: String,
     val syncState: SyncState = SyncState.SAVED_ON_PHONE,
     val retryCount: Int = 0,

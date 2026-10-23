@@ -179,6 +179,34 @@ def init_db():
         except Exception:
             pass
 
+    # Safe migrations for inquiries extra columns
+    for col, col_type in [
+        ("decline_reason", "TEXT"),
+        ("offered_price_toman", "INTEGER"),
+        ("is_in_stock", "INTEGER"),
+        ("response_notes", "TEXT")
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE inquiries ADD COLUMN {col} {col_type}")
+        except Exception:
+            pass
+
+    # Safe migration for inquiry_responses decline_reason and status
+    try:
+        cursor.execute("ALTER TABLE inquiry_responses ADD COLUMN decline_reason TEXT")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE inquiry_responses ADD COLUMN status TEXT")
+    except Exception:
+        pass
+
+    # Safe migration for inquiry_timelines urgent_call_push_at
+    try:
+        cursor.execute("ALTER TABLE inquiry_timelines ADD COLUMN urgent_call_push_at TIMESTAMP")
+    except Exception:
+        pass
+
     # Seed default scheduler configs
     cursor.execute("""
     INSERT OR IGNORE INTO scheduler_configs (config_key, config_value, description)

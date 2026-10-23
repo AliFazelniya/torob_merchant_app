@@ -28,4 +28,7 @@ interface SyncQueueDao {
 
     @Query("DELETE FROM sync_queue WHERE clientResponseId = :clientResponseId")
     suspend fun deleteItem(clientResponseId: String)
+
+    @Query("DELETE FROM sync_queue")
+    suspend fun clearAll()
 }

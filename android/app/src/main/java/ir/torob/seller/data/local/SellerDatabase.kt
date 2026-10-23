@@ -19,7 +19,7 @@ class Converters {
     }
 }
 
-@Database(entities = [InquiryEntity::class, SyncQueueEntity::class], version = 2, exportSchema = false)
+@Database(entities = [InquiryEntity::class, SyncQueueEntity::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class SellerDatabase : RoomDatabase() {
     abstract fun inquiryDao(): InquiryDao

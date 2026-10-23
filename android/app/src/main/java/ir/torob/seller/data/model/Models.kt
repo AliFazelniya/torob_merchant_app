@@ -98,10 +98,14 @@ data class InquiryDto(
     @SerializedName("customer_phone") val customerPhone: String? = null,
     @SerializedName("inquiry_type") val inquiryType: String,
     @SerializedName("user_note") val userNote: String? = null,
-    @SerializedName("status") val status: String, // ACTIVE, ANSWERED, EXPIRED
+    @SerializedName("status") val status: String, // ACTIVE, ANSWERED, OUT_OF_STOCK, DECLINED, EXPIRED
     @SerializedName("created_at") val createdAt: String,
     @SerializedName("expires_at") val expiresAt: String,
-    @SerializedName("remaining_seconds") val remainingSeconds: Long = 0
+    @SerializedName("remaining_seconds") val remainingSeconds: Long = 0,
+    @SerializedName("decline_reason") val declineReason: String? = null,
+    @SerializedName("response_price") val responsePrice: Long? = null,
+    @SerializedName("response_in_stock") val responseInStock: Boolean? = null,
+    @SerializedName("response_notes") val responseNotes: String? = null
 )
 
 data class InquiryResponseRequest(
@@ -110,6 +114,8 @@ data class InquiryResponseRequest(
     @SerializedName("is_in_stock") val isInStock: Boolean,
     @SerializedName("stock_count") val stockCount: Int = 1,
     @SerializedName("notes") val notes: String?,
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("decline_reason") val declineReason: String? = null,
     @SerializedName("submitted_at") val submittedAt: String
 )
 
@@ -121,6 +127,8 @@ data class InquiryResponseDto(
     @SerializedName("is_in_stock") val isInStock: Boolean,
     @SerializedName("stock_count") val stockCount: Int = 1,
     @SerializedName("notes") val notes: String?,
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("decline_reason") val declineReason: String? = null,
     @SerializedName("submitted_at") val submittedAt: String,
     @SerializedName("received_at") val receivedAt: String,
     @SerializedName("is_duplicate") val isDuplicate: Boolean = false
@@ -133,6 +141,8 @@ data class BatchSyncItem(
     @SerializedName("is_in_stock") val isInStock: Boolean,
     @SerializedName("stock_count") val stockCount: Int = 1,
     @SerializedName("notes") val notes: String?,
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("decline_reason") val declineReason: String? = null,
     @SerializedName("submitted_at") val submittedAt: String
 )
 

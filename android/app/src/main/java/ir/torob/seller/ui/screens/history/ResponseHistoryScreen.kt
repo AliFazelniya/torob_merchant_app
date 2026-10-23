@@ -10,9 +10,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
@@ -46,6 +49,7 @@ fun ResponseHistoryScreen(
     val historyList by viewModel.historyInquiries.collectAsState()
     val historyFilter by viewModel.historyFilter.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isServerConnected by viewModel.isServerConnected.collectAsState()
     val listState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
 
@@ -101,7 +105,7 @@ fun ResponseHistoryScreen(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "آرشیو استعلام‌های پاسخ‌داده‌شده و منقضی‌شده",
+                        text = "آرشیو استعلام‌های پاسخ‌داده‌شده، ناموجود، ردشده و منقضی",
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -189,7 +193,8 @@ fun ResponseHistoryScreen(
             }
         }
 
-        // Filter Tabs
+        // Filter Tabs (همه، پاسخ‌داده‌شده، عدم موجودی، رد استعلام، منقضی‌شده)
+        val filterScrollState = rememberScrollState()
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surface,
@@ -198,11 +203,12 @@ fun ResponseHistoryScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .horizontalScroll(filterScrollState)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ModernFilterChip(
-                    title = "همه (${PersianFormatters.toPersianDigits(historyList.size)})",
+                    title = "همه",
                     isSelected = historyFilter == "ALL",
                     onClick = { viewModel.setHistoryFilter("ALL") }
                 )
@@ -210,6 +216,16 @@ fun ResponseHistoryScreen(
                     title = "پاسخ‌داده‌شده",
                     isSelected = historyFilter == "ANSWERED",
                     onClick = { viewModel.setHistoryFilter("ANSWERED") }
+                )
+                ModernFilterChip(
+                    title = "عدم موجودی",
+                    isSelected = historyFilter == "OUT_OF_STOCK",
+                    onClick = { viewModel.setHistoryFilter("OUT_OF_STOCK") }
+                )
+                ModernFilterChip(
+                    title = "رد استعلام",
+                    isSelected = historyFilter == "DECLINED",
+                    onClick = { viewModel.setHistoryFilter("DECLINED") }
                 )
                 ModernFilterChip(
                     title = "منقضی‌شده",
@@ -230,6 +246,19 @@ fun ResponseHistoryScreen(
                 }
             }
 
+            !isOnline || !isServerConnected -> {
+                EmptyStateView(
+                    icon = Icons.Default.CloudOff,
+                    iconTint = TorobError,
+                    iconBgColor = TorobErrorLight,
+                    title = "ارتباط با سرور ترب برقرار نیست",
+                    description = "جهت حفظ امنیت و محرمانگی، مشاهده تاریخچه استعلام‌ها تنها در زمان برقراری ارتباط با سرور امکان‌پذیر است.",
+                    actionButtonText = "تلاش مجدد برای اتصال",
+                    onActionClick = viewModel::refresh,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
             historyList.isEmpty() -> {
                 EmptyStateView(
                     icon = Icons.Default.History,
@@ -237,6 +266,8 @@ fun ResponseHistoryScreen(
                     iconBgColor = TorobRedLight,
                     title = when (historyFilter) {
                         "ANSWERED" -> "هیچ استعلام پاسخ‌داده‌شده‌ای یافت نشد"
+                        "OUT_OF_STOCK" -> "هیچ استعلام با عدم موجودی یافت نشد"
+                        "DECLINED" -> "هیچ استعلام ردشده‌ای ثبت نشده است"
                         "EXPIRED" -> "هیچ استعلام منقضی‌شده‌ای وجود ندارد"
                         else -> "تاریخچه استعلام‌های شما خالی است"
                     },
@@ -417,6 +448,85 @@ private fun ModernHistoryCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+
+            // Status-specific feedback banner
+            if (inquiry.status == "DECLINED") {
+                val reasonText = inquiry.declineReason ?: inquiry.responseNotes ?: "مشخص نشده"
+                Surface(
+                    color = TorobErrorLight,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = null,
+                            tint = TorobError,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "علت رد استعلام: $reasonText",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TorobError
+                        )
+                    }
+                }
+            } else if (inquiry.status == "OUT_OF_STOCK") {
+                Surface(
+                    color = TorobWarningLight,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = null,
+                            tint = WarningAmberDark,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "اعلام عدم موجودی کالا در انبار توسط فروشگاه",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = WarningAmberDark
+                        )
+                    }
+                }
+            } else if (inquiry.status == "ANSWERED" && inquiry.responsePrice != null && inquiry.responsePrice > 0) {
+                Surface(
+                    color = TorobSuccessLight,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "قیمت پیشنهادی شما: ${PersianFormatters.formatPriceToman(inquiry.responsePrice)}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TorobSuccess
+                        )
+                    }
+                }
             }
         }
     }

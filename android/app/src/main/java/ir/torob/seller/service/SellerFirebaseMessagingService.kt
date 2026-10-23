@@ -54,17 +54,39 @@ class SellerFirebaseMessagingService : FirebaseMessagingService() {
 
         val data = remoteMessage.data
         val inquiryId = data["inquiry_id"] ?: ""
-        val notificationType = data["notification_type"] ?: "INITIAL_INQUIRY"
+        val notificationType = data["notification_type"] ?: data["type"] ?: "INITIAL_INQUIRY"
 
         val title = remoteMessage.notification?.title ?: data["title"] ?: "استعلام جدید در ترب"
         val body = remoteMessage.notification?.body ?: data["body"] ?: "یک مشتری منتظر استعلام قیمت و موجودی است."
 
-        ir.torob.seller.util.NotificationHelper.showInquiryNotification(
-            context = this,
-            inquiryId = inquiryId,
-            title = title,
-            body = body,
-            notificationType = notificationType
-        )
+        if (notificationType == "URGENT_CALL") {
+            val alertIntent = Intent(this, InquiryAlertService::class.java).apply {
+                action = InquiryAlertService.ACTION_START_ALERT
+                putExtra("inquiry_id", inquiryId)
+                putExtra("title", title)
+                putExtra("body", body)
+                putExtra("duration_seconds", 120)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(alertIntent)
+            } else {
+                startService(alertIntent)
+            }
+        } else {
+            if (notificationType == "EXPIRATION_ALERT") {
+                val stopIntent = Intent(this, InquiryAlertService::class.java).apply {
+                    action = InquiryAlertService.ACTION_STOP_ALERT
+                }
+                startService(stopIntent)
+            }
+
+            ir.torob.seller.util.NotificationHelper.showInquiryNotification(
+                context = this,
+                inquiryId = inquiryId,
+                title = title,
+                body = body,
+                notificationType = notificationType
+            )
+        }
     }
 }

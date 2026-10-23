@@ -88,10 +88,18 @@ fun InquiryStatusBadge(
         }
         "OUT_OF_STOCK" -> {
             Tuple4(
+                TorobWarningLight,
+                WarningAmberDark,
+                Icons.Default.Close,
+                "عدم موجودی"
+            )
+        }
+        "DECLINED" -> {
+            Tuple4(
                 TorobErrorLight,
                 TorobError,
                 Icons.Default.Close,
-                "عدم موجودی"
+                "رد شده"
             )
         }
         "EXPIRED" -> {
