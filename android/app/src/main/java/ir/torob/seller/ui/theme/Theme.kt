@@ -1,7 +1,6 @@
 package ir.torob.seller.ui.theme
 
 import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -14,16 +13,25 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
-    primary = TorobRed,
+    primary = PrimaryBlue,
     onPrimary = PureWhite,
-    primaryContainer = TorobLightRed,
-    onPrimaryContainer = TorobDarkRed,
-    secondary = TorobGreen,
+    primaryContainer = PrimaryBlueLight,
+    onPrimaryContainer = PrimaryBlueDark,
+    secondary = SuccessGreen,
     onSecondary = PureWhite,
-    background = Slate50,
-    surface = PureWhite,
-    onBackground = Slate900,
-    onSurface = Slate900
+    secondaryContainer = SuccessGreenLight,
+    onSecondaryContainer = SuccessGreenDark,
+    error = ErrorRed,
+    onError = PureWhite,
+    errorContainer = ErrorRedLight,
+    onErrorContainer = ErrorRedDark,
+    background = BackgroundLight,
+    surface = SurfaceLight,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary,
+    surfaceVariant = SurfaceVariantLight,
+    onSurfaceVariant = TextSecondary,
+    outline = BorderSubtle
 )
 
 @Composable
@@ -35,12 +43,12 @@ fun TorobSellerTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = TorobRed.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            window.statusBarColor = PureWhite.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
         }
     }
 
-    // Force Right-to-Left (RTL) LayoutDirection and Vazir font for Persian user interface
+    // Enforce Right-to-Left (RTL) LayoutDirection and Vazir typography for Persian UI
     CompositionLocalProvider(
         LocalLayoutDirection provides LayoutDirection.Rtl,
         androidx.compose.material3.LocalTextStyle provides androidx.compose.ui.text.TextStyle(fontFamily = VazirFontFamily)

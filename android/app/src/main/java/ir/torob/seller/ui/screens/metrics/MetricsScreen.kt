@@ -1,19 +1,33 @@
 package ir.torob.seller.ui.screens.metrics
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ir.torob.seller.data.model.MetricsDto
+import ir.torob.seller.ui.components.EmptyStateView
 import ir.torob.seller.ui.theme.*
 import ir.torob.seller.ui.viewmodel.MetricsViewModel
 import ir.torob.seller.util.PersianFormatters
@@ -28,32 +42,75 @@ fun MetricsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Slate50)
+            .background(BackgroundLight)
     ) {
+        // Top App Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = PureWhite,
             shadowElevation = 1.dp
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "عملکرد و شاخص‌های فروشگاه",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Slate900
-                )
-                Text(
-                    text = "پایش نرخ پاسخ‌گویی و سرعت ثبت قیمت در ترب",
-                    fontSize = 11.sp,
-                    color = Slate500
-                )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "عملکرد و شاخص‌های فروشگاه",
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "پایش نرخ پاسخ‌گویی و سرعت ثبت قیمت در ترب",
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                }
+
+                FilledTonalButton(
+                    onClick = viewModel::loadMetrics,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = Slate100,
+                        contentColor = Slate700
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "بروزرسانی",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "بروزرسانی",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 
         if (state.isLoading && metrics == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = TorobRed)
+                CircularProgressIndicator(color = PrimaryBlue)
             }
+        } else if (metrics == null && state.errorMessage != null) {
+            EmptyStateView(
+                icon = Icons.AutoMirrored.Filled.TrendingUp,
+                iconTint = ErrorRed,
+                iconBgColor = ErrorRedLight,
+                title = "خطا در دریافت آمار عملکرد",
+                description = state.errorMessage ?: "امکان بارگذاری شاخص‌های فروشگاه وجود ندارد.",
+                actionButtonText = "تلاش مجدد",
+                onActionClick = viewModel::loadMetrics,
+                modifier = Modifier.fillMaxSize()
+            )
         } else if (metrics != null) {
             Column(
                 modifier = Modifier
@@ -62,24 +119,31 @@ fun MetricsScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // High level stats grid
+                // Hero Score Card
+                HeroScoreCard(metrics = metrics)
+
+                // 2x2 Metric Grid
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    MetricCard(
+                    ModernMetricCard(
                         title = "نرخ پاسخ‌گویی",
                         value = "${PersianFormatters.toPersianDigits(metrics.responseRatePercent.toInt())}٪",
                         subtitle = "هدف سیستم: بالای ۸۵٪",
-                        modifier = Modifier.weight(1f),
-                        accentColor = TorobGreen
+                        icon = Icons.AutoMirrored.Filled.TrendingUp,
+                        accentColor = if (metrics.responseRatePercent >= 85f) SuccessGreen else WarningAmber,
+                        bgColor = if (metrics.responseRatePercent >= 85f) SuccessGreenLight else WarningAmberLight,
+                        modifier = Modifier.weight(1f)
                     )
-                    MetricCard(
+                    ModernMetricCard(
                         title = "میانگین زمان پاسخ",
                         value = metrics.averageResponseTimeFormatted,
-                        subtitle = "هدف سیستم: کمتر از ۵ دقیقه",
-                        modifier = Modifier.weight(1f),
-                        accentColor = TorobAmber
+                        subtitle = "هدف سیستم: زیر ۵ دقیقه",
+                        icon = Icons.Default.AccessTime,
+                        accentColor = PrimaryBlue,
+                        bgColor = PrimaryBlueLight,
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
@@ -87,42 +151,72 @@ fun MetricsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    MetricCard(
-                        title = "کل استعلام‌ها",
+                    ModernMetricCard(
+                        title = "کل استعلام‌های دریافتی",
                         value = PersianFormatters.toPersianDigits(metrics.totalInquiries),
-                        subtitle = "دریافتی از خریداران",
-                        modifier = Modifier.weight(1f),
-                        accentColor = Slate700
+                        subtitle = "از خریداران ترب",
+                        icon = Icons.Default.HourglassEmpty,
+                        accentColor = Slate700,
+                        bgColor = Slate100,
+                        modifier = Modifier.weight(1f)
                     )
-                    MetricCard(
-                        title = "پاسخ‌داده‌شده",
+                    ModernMetricCard(
+                        title = "پاسخ‌های ثبت‌شده",
                         value = PersianFormatters.toPersianDigits(metrics.answeredInquiries),
-                        subtitle = "موفق",
-                        modifier = Modifier.weight(1f),
-                        accentColor = TorobGreen
+                        subtitle = "موفق و در مهلت قانونی",
+                        icon = Icons.Default.CheckCircle,
+                        accentColor = SuccessGreen,
+                        bgColor = SuccessGreenLight,
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
-                // Guidelines card
+                // Visual Distribution Ratio Card
+                RatioBreakdownCard(metrics = metrics)
+
+                // Ranking & Tips Card
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = PureWhite),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(WarningAmberLight),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lightbulb,
+                                    contentDescription = null,
+                                    tint = WarningAmberDark,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Text(
+                                text = "راهنمای ارتقای رتبه فروشگاه در ترب",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
                         Text(
-                            text = "نحوه ارزیابی رتبه فروشگاه در ترب",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Slate900
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "• فروشگاه‌هایی که در کمتر از ۵ دقیقه به استعلام‌ها پاسخ می‌دهند، در اولویت نمایش پیشنهادات در ترب قرار می‌گیرند.\n• عدم پاسخ به استعلام ظرف ۱۰ دقیقه منجر به انقضا و ارجاع درخواست به فروشگاه همسایه خواهد شد.",
+                            text = "• سرعت پاسخ‌گویی زیر ۵ دقیقه: فروشگاه شما در اولویت نمایش پیشنهادات ویژه ترب قرار می‌گیرد.\n• نرخ پاسخ بالای ۸۵٪: به عنوان فروشنده برتر و مطمئن به خریداران معرفی می‌شوید.\n• استعلام‌های منقضی‌شده: در صورت عدم ثبت قیمت ظرف ۱۰ دقیقه، استعلام به فروشگاه بعدی ارسال می‌شود.",
                             fontSize = 12.sp,
                             color = Slate700,
-                            lineHeight = 20.sp
+                            lineHeight = 21.sp
                         )
                     }
                 }
@@ -132,25 +226,263 @@ fun MetricsScreen(
 }
 
 @Composable
-private fun MetricCard(
+private fun HeroScoreCard(metrics: MetricsDto) {
+    val rate = metrics.responseRatePercent
+    val isGood = rate >= 85f
+    val isModerate = rate in 70f..84.9f
+
+    val badgeText = when {
+        isGood -> "عملکرد عالی"
+        isModerate -> "عملکرد متوسط"
+        else -> "نیازمند بهبود"
+    }
+
+    val badgeColor = when {
+        isGood -> SuccessGreen
+        isModerate -> WarningAmber
+        else -> ErrorRed
+    }
+
+    val badgeBg = when {
+        isGood -> SuccessGreenLight
+        isModerate -> WarningAmberLight
+        else -> ErrorRedLight
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "شاخص کلی عملکرد فروشگاه",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = badgeBg
+                ) {
+                    Text(
+                        text = badgeText,
+                        color = badgeColor,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Progress Bar
+            LinearProgressIndicator(
+                progress = { (rate / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = badgeColor,
+                trackColor = Slate100
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "نرخ پاسخ‌گویی: ${PersianFormatters.toPersianDigits(rate.toInt())}٪",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "زمان پاسخ: ${metrics.averageResponseTimeFormatted}",
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModernMetricCard(
     title: String,
     value: String,
     subtitle: String,
-    modifier: Modifier = Modifier,
-    accentColor: androidx.compose.ui.graphics.Color
+    icon: ImageVector,
+    accentColor: Color,
+    bgColor: Color,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier
+            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = PureWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(bgColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = value,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                color = accentColor
+            )
+
+            Text(
+                text = subtitle,
+                fontSize = 10.sp,
+                color = TextSecondary,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun RatioBreakdownCard(metrics: MetricsDto) {
+    val total = metrics.totalInquiries.coerceAtLeast(1)
+    val answered = metrics.answeredInquiries
+    val expired = metrics.expiredInquiries
+    val active = metrics.activeInquiries
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = title, fontSize = 11.sp, color = Slate500, fontWeight = FontWeight.Medium)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(text = value, fontSize = 20.sp, fontWeight = FontWeight.Black, color = accentColor)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = subtitle, fontSize = 10.sp, color = Slate500)
+            Text(
+                text = "توزیع وضعیت استعلام‌ها",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Multi-segment horizontal bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(5.dp))
+            ) {
+                if (answered > 0) {
+                    Box(
+                        modifier = Modifier
+                            .weight(answered.toFloat() / total)
+                            .fillMaxHeight()
+                            .background(SuccessGreen)
+                    )
+                }
+                if (active > 0) {
+                    Box(
+                        modifier = Modifier
+                            .weight(active.toFloat() / total)
+                            .fillMaxHeight()
+                            .background(PrimaryBlue)
+                    )
+                }
+                if (expired > 0) {
+                    Box(
+                        modifier = Modifier
+                            .weight(expired.toFloat() / total)
+                            .fillMaxHeight()
+                            .background(ErrorRed)
+                    )
+                }
+                if (answered == 0 && active == 0 && expired == 0) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(Slate200)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Legend
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                LegendItem(label = "پاسخ‌داده‌شده", count = answered, color = SuccessGreen)
+                LegendItem(label = "در جریان", count = active, color = PrimaryBlue)
+                LegendItem(label = "منقضی‌شده", count = expired, color = ErrorRed)
+            }
         }
+    }
+}
+
+@Composable
+private fun LegendItem(label: String, count: Int, color: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Text(
+            text = "$label (${PersianFormatters.toPersianDigits(count)})",
+            fontSize = 11.sp,
+            color = TextSecondary
+        )
     }
 }

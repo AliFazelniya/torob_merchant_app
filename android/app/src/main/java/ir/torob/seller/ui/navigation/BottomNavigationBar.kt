@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import ir.torob.seller.ui.theme.*
+import ir.torob.seller.util.PersianFormatters
 
 data class NavItem(
     val route: String,
@@ -26,7 +27,10 @@ data class NavItem(
 )
 
 @Composable
-fun BottomNavigationBar(navController: NavController) {
+fun BottomNavigationBar(
+    navController: NavController,
+    inquiryBadgeCount: Int = 0
+) {
     val items = listOf(
         NavItem(Screen.Inquiries.route, "استعلام‌ها", Icons.Default.QuestionAnswer),
         NavItem(Screen.History.route, "تاریخچه", Icons.Default.History),
@@ -39,7 +43,10 @@ fun BottomNavigationBar(navController: NavController) {
     val currentRoute = navBackStackEntry?.destination?.route
 
     // Don't show bottom bar on auth screens or inquiry detail screen
-    if (currentRoute == Screen.Login.route || currentRoute?.startsWith("otp_verify") == true || currentRoute?.startsWith("inquiry_detail") == true) {
+    if (currentRoute == Screen.Login.route ||
+        currentRoute?.startsWith("otp_verify") == true ||
+        currentRoute?.startsWith("inquiry_detail") == true
+    ) {
         return
     }
 
@@ -49,6 +56,8 @@ fun BottomNavigationBar(navController: NavController) {
     ) {
         items.forEach { item ->
             val selected = currentRoute == item.route
+            val isInbox = item.route == Screen.Inquiries.route
+
             NavigationBarItem(
                 selected = selected,
                 onClick = {
@@ -61,11 +70,34 @@ fun BottomNavigationBar(navController: NavController) {
                     }
                 },
                 icon = {
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = item.title,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    if (isInbox && inquiryBadgeCount > 0) {
+                        BadgedBox(
+                            badge = {
+                                Badge(
+                                    containerColor = ErrorRed,
+                                    contentColor = PureWhite
+                                ) {
+                                    Text(
+                                        text = PersianFormatters.toPersianDigits(inquiryBadgeCount),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.title,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = item.title,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 },
                 label = {
                     Text(
@@ -75,9 +107,9 @@ fun BottomNavigationBar(navController: NavController) {
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = TorobRed,
-                    selectedTextColor = TorobRed,
-                    indicatorColor = TorobLightRed,
+                    selectedIconColor = PrimaryBlue,
+                    selectedTextColor = PrimaryBlue,
+                    indicatorColor = PrimaryBlueLight,
                     unselectedIconColor = Slate500,
                     unselectedTextColor = Slate500
                 )

@@ -50,8 +50,15 @@ fun AppNavGraph(
         }
     }
 
+    val activeInquiries by inquiryViewModel.activeInquiries.collectAsState()
+
     Scaffold(
-        bottomBar = { BottomNavigationBar(navController = navController) }
+        bottomBar = {
+            BottomNavigationBar(
+                navController = navController,
+                inquiryBadgeCount = activeInquiries.size
+            )
+        }
     ) { innerPadding ->
         NavHost(
             navController = navController,
