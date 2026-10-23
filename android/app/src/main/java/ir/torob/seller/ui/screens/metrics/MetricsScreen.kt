@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -38,6 +39,10 @@ fun MetricsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val metrics = state.metrics
+
+    LaunchedEffect(Unit) {
+        viewModel.loadMetrics()
+    }
 
     Column(
         modifier = Modifier

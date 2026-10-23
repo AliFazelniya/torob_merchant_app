@@ -34,6 +34,10 @@ fun StoreProfileScreen(
     val state by viewModel.uiState.collectAsState()
     val shop = state.shop
 
+    LaunchedEffect(Unit) {
+        viewModel.loadProfile()
+    }
+
     var showRequestDialog by remember { mutableStateOf(false) }
     var reqShopName by remember { mutableStateOf("") }
     var reqPhone by remember { mutableStateOf("") }

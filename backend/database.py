@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import json
+import csv
 from datetime import datetime
 from config import settings
 
@@ -171,6 +172,13 @@ def init_db():
     )
     """)
 
+    # Safe migrations for shop_settings extra columns
+    for col, col_type in [("category_names", "TEXT"), ("lat", "REAL"), ("lon", "REAL"), ("website_url", "TEXT")]:
+        try:
+            cursor.execute(f"ALTER TABLE shop_settings ADD COLUMN {col} {col_type}")
+        except Exception:
+            pass
+
     # Seed default scheduler configs
     cursor.execute("""
     INSERT OR IGNORE INTO scheduler_configs (config_key, config_value, description)
@@ -179,23 +187,74 @@ def init_db():
         ('expiration_timeout_seconds', '600', 'Time in seconds after creation to expire inquiry')
     """)
 
-    # Seed sample seller & shop if empty
-    cursor.execute("SELECT COUNT(*) FROM sellers")
-    if cursor.fetchone()[0] == 0:
-        default_seller_id = "seller_test_001"
-        default_phone = "09123456789"
-        default_shop_id = "shop_51d0c1a6edf81ba759726bab"  # موبایل تخت جمشید
-        default_name = "علی رضایی"
+    # Seed shops from dataset if table has fewer than 10 rows
+    cursor.execute("SELECT COUNT(*) FROM shop_settings")
+    shop_count = cursor.fetchone()[0]
+    if shop_count < 10:
+        csv_path = os.path.join(os.path.dirname(__file__), "data", "shops.csv")
+        if os.path.exists(csv_path):
+            shops_to_insert = []
+            with open(csv_path, mode='r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    sid = row.get('shop_id')
+                    name = row.get('name')
+                    if not sid or not name:
+                        continue
+                    addr = row.get('address') or ''
+                    phone = ''
+                    contacts_raw = row.get('contacts')
+                    if contacts_raw:
+                        try:
+                            c_list = json.loads(contacts_raw)
+                            if isinstance(c_list, list) and len(c_list) > 0:
+                                phone = c_list[0].get('display_number') or c_list[0].get('phone') or ''
+                        except Exception:
+                            pass
+                    
+                    shops_to_insert.append((
+                        sid, name, addr, phone, 1, '09:00', '21:00', 1, 0,
+                        row.get('category_names'),
+                        float(row['lat']) if row.get('lat') else None,
+                        float(row['lon']) if row.get('lon') else None,
+                        row.get('website_url')
+                    ))
 
-        cursor.execute("""
-        INSERT INTO sellers (seller_id, phone_number, shop_id, full_name)
-        VALUES (?, ?, ?, ?)
-        """, (default_seller_id, default_phone, default_shop_id, default_name))
+            cursor.executemany("""
+            INSERT OR REPLACE INTO shop_settings 
+            (shop_id, shop_name, address, phone, is_open, open_time, close_time, accept_inquiries, holiday_mode, category_names, lat, lon, website_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, shops_to_insert)
 
-        cursor.execute("""
-        INSERT INTO shop_settings (shop_id, shop_name, address, phone, is_open, open_time, close_time)
-        VALUES (?, ?, ?, ?, 1, '09:30', '21:30')
-        """, (default_shop_id, "موبایل تخت جمشید", "خیابان جمهوری، نرسیده به پل حافظ، نبش کوچه کلانتری، پاساژ خانه موبایل، پلاک ۴۱۲", "۰۲۱۷۶۵۵۷۶۲۴"))
+    # Seed default sample seller (Ali Rezaei - Mob Takht Jamshid)
+    cursor.execute("""
+    INSERT OR IGNORE INTO sellers (seller_id, phone_number, shop_id, full_name, is_active)
+    VALUES ('seller_test_001', '09123456789', 'shop_51d0c1a6edf81ba759726bab', 'علی رضایی', 1)
+    """)
+
+    # Seed new development seller & shop (Ali Fazelniya - Computer Store)
+    fazel_shop_id = "shop_fazel_computer"
+    fazel_phone = "09134257815"
+    fazel_seller_id = "seller_ali_fazelnya"
+    fazel_name = "علی فاضل نیا"
+
+    cursor.execute("""
+    INSERT OR REPLACE INTO shop_settings 
+    (shop_id, shop_name, address, phone, is_open, open_time, close_time, accept_inquiries, holiday_mode, category_names, website_url)
+    VALUES (?, ?, ?, ?, 1, '09:00', '22:00', 1, 0, ?, ?)
+    """, (
+        fazel_shop_id,
+        "فروشگاه کامپیوتر و سخت‌افزار فاضل‌نیا",
+        "اصفهان، خیابان طالقانی، مجتمع کامپیوتر طالقانی، طبقه اول، واحد ۱۲",
+        "۰۳۱۳۲۲۲۴۴۵۵",
+        '["قطعات کامپیوتر","لپ‌تاپ و تجهیزات اداری","لوازم جانبی کامپیوتر","تجهیزات شبکه"]',
+        "https://fazel-computer.ir"
+    ))
+
+    cursor.execute("""
+    INSERT OR REPLACE INTO sellers (seller_id, phone_number, shop_id, full_name, is_active)
+    VALUES (?, ?, ?, ?, 1)
+    """, (fazel_seller_id, fazel_phone, fazel_shop_id, fazel_name))
 
     conn.commit()
     conn.close()

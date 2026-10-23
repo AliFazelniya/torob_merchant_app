@@ -32,7 +32,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     }
 
     fun loginDemoSeller() {
-        val phone = _uiState.value.phoneNumber.ifBlank { "09123456789" }
+        val phone = _uiState.value.phoneNumber.ifBlank { "09134257815" }
         repository.loginDemoSeller(phone)
         _uiState.value = _uiState.value.copy(isLoggedIn = true, isLoading = false)
     }
