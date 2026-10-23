@@ -51,14 +51,21 @@ class MainActivity : ComponentActivity() {
         pendingInquiryId = initialInquiryId
 
         setContent {
-            TorobSellerTheme {
+            val settingsViewModel = remember { SettingsViewModel(applicationContext) }
+            val settingsUiState by settingsViewModel.uiState.collectAsState()
+            val isDarkTheme = when (settingsUiState.themeMode) {
+                ir.torob.seller.data.repository.AppThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+                ir.torob.seller.data.repository.AppThemeMode.LIGHT -> false
+                ir.torob.seller.data.repository.AppThemeMode.DARK -> true
+            }
+
+            TorobSellerTheme(darkTheme = isDarkTheme) {
                 val navController = rememberNavController()
 
                 val authViewModel = remember { AuthViewModel(authRepository) }
                 val inquiryViewModel = remember { InquiryViewModel(inquiryRepository) }
                 val storeViewModel = remember { StoreViewModel(shopRepository) }
                 val metricsViewModel = remember { MetricsViewModel(applicationContext) }
-                val settingsViewModel = remember { SettingsViewModel(applicationContext) }
 
                 val isOnline by networkMonitor.isOnline.collectAsState(initial = true)
 

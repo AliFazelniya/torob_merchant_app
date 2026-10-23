@@ -30,8 +30,8 @@ fun ProductThumbnail(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(cornerRadius))
-            .background(Slate100)
-            .border(1.dp, BorderSubtle, RoundedCornerShape(cornerRadius)),
+            .background(TorobBackground)
+            .border(1.dp, TorobDivider, RoundedCornerShape(cornerRadius)),
         contentAlignment = Alignment.Center
     ) {
         if (!imageUrl.isNullOrBlank()) {
@@ -44,7 +44,7 @@ fun ProductThumbnail(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(
                             strokeWidth = 2.dp,
-                            color = PrimaryBlue,
+                            color = TorobRed,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -54,7 +54,7 @@ fun ProductThumbnail(
                         Icon(
                             imageVector = Icons.Default.ShoppingBag,
                             contentDescription = null,
-                            tint = Slate400,
+                            tint = TorobTextSecondary,
                             modifier = Modifier.size(size / 2)
                         )
                     }
@@ -64,7 +64,7 @@ fun ProductThumbnail(
             Icon(
                 imageVector = Icons.Default.ShoppingBag,
                 contentDescription = null,
-                tint = Slate400,
+                tint = TorobTextSecondary,
                 modifier = Modifier.size(size / 2)
             )
         }

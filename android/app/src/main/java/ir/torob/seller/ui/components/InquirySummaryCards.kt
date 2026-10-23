@@ -41,8 +41,8 @@ fun InquirySummaryCards(
             title = "کل در انتظار",
             count = activeCount,
             icon = Icons.Default.Inbox,
-            accentColor = PrimaryBlue,
-            bgColor = PrimaryBlueLight,
+            accentColor = TorobRed,
+            bgColor = TorobRedLight,
             isSelected = selectedFilter == "ALL",
             onClick = { onFilterSelected("ALL") },
             modifier = Modifier.weight(1f)
@@ -52,8 +52,8 @@ fun InquirySummaryCards(
             title = "نیاز به اقدام فوری",
             count = urgentCount,
             icon = Icons.Default.WarningAmber,
-            accentColor = if (urgentCount > 0) ErrorRed else WarningAmber,
-            bgColor = if (urgentCount > 0) ErrorRedLight else WarningAmberLight,
+            accentColor = TorobWarning,
+            bgColor = TorobWarningLight,
             isSelected = selectedFilter == "URGENT",
             onClick = { onFilterSelected("URGENT") },
             modifier = Modifier.weight(1f)

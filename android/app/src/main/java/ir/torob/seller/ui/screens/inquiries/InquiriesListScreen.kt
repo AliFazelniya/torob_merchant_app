@@ -24,11 +24,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.os.SystemClock
 import ir.torob.seller.data.local.InquiryEntity
 import ir.torob.seller.ui.components.*
 import ir.torob.seller.ui.theme.*
 import ir.torob.seller.ui.viewmodel.InquiryViewModel
 import ir.torob.seller.util.PersianFormatters
+import kotlinx.coroutines.delay
 
 @Composable
 fun InquiriesListScreen(
@@ -45,6 +47,14 @@ fun InquiriesListScreen(
 
     var filterType by remember { mutableStateOf("ALL") }
 
+    // Periodic silent sync for incoming inquiries
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(15_000L)
+            viewModel.silentRefresh()
+        }
+    }
+
     val urgentCount = remember(activeInquiries) {
         activeInquiries.count { it.remainingSeconds in 1..180 }
     }
@@ -60,7 +70,7 @@ fun InquiriesListScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundLight)
+            .background(TorobBackground)
     ) {
         // Connection & Offline Banner
         ConnectionStatusBar(isOnline = isOnline, pendingSyncCount = pendingSyncCount)
@@ -68,7 +78,7 @@ fun InquiriesListScreen(
         // Modern Top App Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = PureWhite,
+            color = TorobSurface,
             shadowElevation = 1.dp
         ) {
             Row(
@@ -78,43 +88,35 @@ fun InquiriesListScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "استعلام‌های فعال",
-                            fontSize = 19.sp,
-                            fontWeight = FontWeight.Black,
-                            color = TextPrimary
-                        )
-                        if (activeInquiries.isNotEmpty()) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = PrimaryBlueLight
-                            ) {
-                                Text(
-                                    text = "${PersianFormatters.toPersianDigits(activeInquiries.size)} مورد",
-                                    color = PrimaryBlue,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                )
-                            }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "استعلام‌های فعال",
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TorobTextPrimary
+                    )
+                    if (activeInquiries.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = TorobRedLight
+                        ) {
+                            Text(
+                                text = "${PersianFormatters.toPersianDigits(activeInquiries.size)} مورد",
+                                color = TorobRed,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
                         }
                     }
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "پاسخ سریع به قیمت و موجودی (مهلت پاسخ‌گویی ۱۰ دقیقه)",
-                        fontSize = 11.sp,
-                        color = TextSecondary
-                    )
                 }
 
                 FilledTonalButton(
                     onClick = viewModel::refresh,
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = Slate100,
-                        contentColor = Slate700
+                        containerColor = TorobBackground,
+                        contentColor = TorobTextPrimary
                     ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(10.dp)
@@ -160,15 +162,15 @@ fun InquiriesListScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = PrimaryBlue)
+                    CircularProgressIndicator(color = TorobRed)
                 }
             }
 
             errorMessage != null && activeInquiries.isEmpty() -> {
                 EmptyStateView(
                     icon = Icons.Default.CloudOff,
-                    iconTint = ErrorRed,
-                    iconBgColor = ErrorRedLight,
+                    iconTint = TorobError,
+                    iconBgColor = TorobErrorLight,
                     title = "خطا در دریافت اطلاعات",
                     description = errorMessage ?: "امکان اتصال به سرور وجود ندارد. لطفاً اتصال اینترنت خود را بررسی نمایید.",
                     actionButtonText = "تلاش مجدد",
@@ -180,8 +182,8 @@ fun InquiriesListScreen(
             activeInquiries.isEmpty() -> {
                 EmptyStateView(
                     icon = Icons.Default.Inbox,
-                    iconTint = PrimaryBlue,
-                    iconBgColor = PrimaryBlueLight,
+                    iconTint = TorobRed,
+                    iconBgColor = TorobRedLight,
                     title = "هیچ استعلام فعالی در انتظار پاسخ نیست",
                     description = "استعلام‌های جدید مشتریان به محض ثبت به صورت اعلان و زنگ به شما اطلاع‌رسانی خواهند شد.\nاستعلام‌های پاسخ‌داده‌شده را می‌توانید در تب «تاریخچه» مشاهده کنید.",
                     actionButtonText = "بروزرسانی صندوق",
@@ -193,8 +195,8 @@ fun InquiriesListScreen(
             filteredInquiries.isEmpty() -> {
                 EmptyStateView(
                     icon = Icons.Default.Inbox,
-                    iconTint = Slate500,
-                    iconBgColor = Slate100,
+                    iconTint = TorobTextSecondary,
+                    iconBgColor = TorobBackground,
                     title = "موردی با این فیلتر یافت نشد",
                     description = "استعلامی مطابق فیلتر انتخابی شما در صف انتظار قرار ندارد.",
                     actionButtonText = "مشاهده همه استعلام‌ها",
@@ -226,7 +228,27 @@ private fun ModernInquiryCard(
     inquiry: InquiryEntity,
     onClick: () -> Unit
 ) {
-    val isUrgent = inquiry.remainingSeconds in 1..180
+    var liveRemainingSeconds by remember(inquiry.inquiryId, inquiry.remainingSeconds) {
+        mutableLongStateOf(inquiry.remainingSeconds)
+    }
+
+    LaunchedEffect(inquiry.inquiryId, inquiry.remainingSeconds, inquiry.status) {
+        if (inquiry.status.equals("ACTIVE", ignoreCase = true) && inquiry.remainingSeconds > 0) {
+            val startElapsed = SystemClock.elapsedRealtime()
+            val initialSeconds = inquiry.remainingSeconds
+            liveRemainingSeconds = initialSeconds
+            while (liveRemainingSeconds > 0) {
+                delay(1000L)
+                val elapsed = (SystemClock.elapsedRealtime() - startElapsed) / 1000L
+                liveRemainingSeconds = maxOf(0L, initialSeconds - elapsed)
+            }
+        } else {
+            liveRemainingSeconds = inquiry.remainingSeconds
+        }
+    }
+
+    val isUrgent = liveRemainingSeconds in 1..180
+    val effectiveStatus = if (inquiry.status == "ACTIVE" && liveRemainingSeconds <= 0) "EXPIRED" else inquiry.status
 
     Card(
         modifier = Modifier
@@ -234,11 +256,11 @@ private fun ModernInquiryCard(
             .clickable(onClick = onClick)
             .border(
                 width = if (isUrgent) 1.5.dp else 1.dp,
-                color = if (isUrgent) ErrorRed.copy(alpha = 0.5f) else BorderSubtle,
+                color = if (isUrgent) TorobWarning else TorobDivider,
                 shape = RoundedCornerShape(16.dp)
             ),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        colors = CardDefaults.cardColors(containerColor = TorobSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -252,12 +274,13 @@ private fun ModernInquiryCard(
                     text = "کد رهگیری: ${inquiry.trackingCode}",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Slate500
+                    color = TorobTextSecondary
                 )
 
                 InquiryStatusBadge(
-                    status = inquiry.status,
-                    remainingSeconds = inquiry.remainingSeconds
+                    status = effectiveStatus,
+                    remainingSeconds = liveRemainingSeconds,
+                    autoCountdown = false
                 )
             }
 
@@ -284,7 +307,7 @@ private fun ModernInquiryCard(
                         text = inquiry.productTitle,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = TorobTextPrimary,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         lineHeight = 20.sp
@@ -297,13 +320,13 @@ private fun ModernInquiryCard(
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = TextSecondary,
+                            tint = TorobTextSecondary,
                             modifier = Modifier.size(13.dp)
                         )
                         Text(
                             text = "خریدار: ${inquiry.customerName}",
                             fontSize = 11.sp,
-                            color = TextSecondary
+                            color = TorobTextSecondary
                         )
                     }
                 }
@@ -315,13 +338,13 @@ private fun ModernInquiryCard(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
-                    color = Slate50,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+                    color = TorobBackground,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, TorobDivider)
                 ) {
                     Text(
                         text = "سوال خریدار: «${inquiry.userNote}»",
                         fontSize = 11.sp,
-                        color = Slate700,
+                        color = TorobTextPrimary,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
@@ -330,7 +353,7 @@ private fun ModernInquiryCard(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = BorderSubtle, thickness = 0.8.dp)
+            HorizontalDivider(color = TorobDivider, thickness = 0.8.dp)
             Spacer(modifier = Modifier.height(10.dp))
 
             // Bottom Action Row: Reference Price + Big Response Button
@@ -343,13 +366,13 @@ private fun ModernInquiryCard(
                     Text(
                         text = "قیمت مرجع در سایت",
                         fontSize = 10.sp,
-                        color = TextSecondary
+                        color = TorobTextSecondary
                     )
                     Text(
                         text = PersianFormatters.formatPriceToman(inquiry.recordedPriceToman),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = TorobTextPrimary
                     )
                 }
 
@@ -357,7 +380,7 @@ private fun ModernInquiryCard(
                     onClick = onClick,
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isUrgent) ErrorRed else PrimaryBlue
+                        containerColor = TorobRed
                     ),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
@@ -365,13 +388,13 @@ private fun ModernInquiryCard(
                         text = "ثبت پاسخ",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = PureWhite
+                        color = TorobSurface
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         imageVector = Icons.Default.ChevronLeft,
                         contentDescription = null,
-                        tint = PureWhite,
+                        tint = TorobSurface,
                         modifier = Modifier.size(16.dp)
                     )
                 }

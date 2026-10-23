@@ -54,7 +54,7 @@ fun PriceInputField(
             trailingIcon = {
                 Text(
                     text = "تومان",
-                    color = if (enabled) PrimaryBlue else Slate400,
+                    color = if (enabled) TorobRed else TorobTextSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(end = 12.dp)
@@ -63,13 +63,13 @@ fun PriceInputField(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PrimaryBlue,
-                unfocusedBorderColor = BorderSubtle,
-                focusedLabelColor = PrimaryBlue,
-                unfocusedLabelColor = TextSecondary,
-                focusedContainerColor = PureWhite,
-                unfocusedContainerColor = PureWhite,
-                disabledContainerColor = Slate100
+                focusedBorderColor = TorobRed,
+                unfocusedBorderColor = TorobDivider,
+                focusedLabelColor = TorobRed,
+                unfocusedLabelColor = TorobTextSecondary,
+                focusedContainerColor = TorobSurface,
+                unfocusedContainerColor = TorobSurface,
+                disabledContainerColor = TorobBackground
             ),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
@@ -86,21 +86,21 @@ fun PriceInputField(
             if (isError && errorMessage != null) {
                 Text(
                     text = errorMessage,
-                    color = ErrorRed,
+                    color = TorobError,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )
             } else if (priceToman > 0) {
                 Text(
                     text = "معادل: ${PersianFormatters.formatPriceToman(priceToman)}",
-                    color = PrimaryBlue,
+                    color = TorobRed,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold
                 )
             } else {
                 Text(
                     text = "قیمت را به تومان وارد نمایید",
-                    color = TextSecondary,
+                    color = TorobTextSecondary,
                     fontSize = 11.sp
                 )
             }

@@ -18,9 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ir.torob.seller.ui.theme.TorobDarkRed
-import ir.torob.seller.ui.theme.TorobLightRed
-import ir.torob.seller.ui.theme.TorobRed
+import ir.torob.seller.ui.theme.*
 
 @Composable
 fun NotificationPermissionBanner(
@@ -30,8 +28,8 @@ fun NotificationPermissionBanner(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(TorobLightRed)
-            .border(1.dp, TorobRed.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+            .background(TorobWarningLight)
+            .border(1.dp, TorobWarning.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
             .padding(14.dp)
     ) {
         Column {
@@ -39,7 +37,7 @@ fun NotificationPermissionBanner(
                 Icon(
                     imageVector = Icons.Default.Notifications,
                     contentDescription = null,
-                    tint = TorobDarkRed,
+                    tint = WarningAmberDark,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -47,20 +45,20 @@ fun NotificationPermissionBanner(
                     text = "مجوز دریافت نوتیفیکیشن غیرفعال است!",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TorobDarkRed
+                    color = WarningAmberDark
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "برای دریافت به موقع استعلام خریداران و جلوگیری از دست رفتن مهلت ۵ دقیقه‌ای، مجوز اعلان‌های برنامه را فعال کنید.",
                 fontSize = 12.sp,
-                color = TorobDarkRed.copy(alpha = 0.85f),
+                color = TorobTextPrimary,
                 lineHeight = 18.sp
             )
             Spacer(modifier = Modifier.height(10.dp))
             Button(
                 onClick = onEnableClicked,
-                colors = ButtonDefaults.buttonColors(containerColor = TorobRed),
+                colors = ButtonDefaults.buttonColors(containerColor = TorobWarning),
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                 modifier = Modifier.align(Alignment.End)
@@ -69,7 +67,7 @@ fun NotificationPermissionBanner(
                     text = "فعال‌سازی در تنظیمات گوشی",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = TorobSurface
                 )
             }
         }

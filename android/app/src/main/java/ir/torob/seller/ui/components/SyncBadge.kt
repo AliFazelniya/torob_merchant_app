@@ -30,26 +30,26 @@ fun SyncBadge(
 
     val (bg, textColor, icon, label) = when (syncState) {
         SyncState.SYNCED_ON_SERVER -> Quadruple(
-            TorobLightGreen,
-            TorobGreen,
+            TorobSuccessLight,
+            TorobSuccess,
             Icons.Default.CheckCircle,
             "ثبت نهایی در سرور"
         )
         SyncState.SAVED_ON_PHONE -> Quadruple(
-            TorobLightAmber,
-            TorobAmber,
+            TorobWarningLight,
+            TorobWarning,
             Icons.Default.Schedule,
             "ذخیره در گوشی (در انتظار ارسال)"
         )
         SyncState.UPLOADING -> Quadruple(
-            Color(0xFFE0F2FE),
-            Color(0xFF0369A1),
+            TorobInfoLight,
+            TorobInfo,
             Icons.Default.Sync,
             "در حال مخابره به سرور..."
         )
         SyncState.FAILED_EXPIRED -> Quadruple(
-            TorobLightRed,
-            TorobRed,
+            TorobErrorLight,
+            TorobError,
             Icons.Default.ErrorOutline,
             "خطا در ارسال یا منقضی‌شده"
         )

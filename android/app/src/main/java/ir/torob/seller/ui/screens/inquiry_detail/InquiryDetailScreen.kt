@@ -19,8 +19,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Send
+import android.os.SystemClock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,11 +49,33 @@ fun InquiryDetailScreen(
     val state by viewModel.detailUiState.collectAsState()
     val inquiry = state.inquiry
 
+    var liveRemainingSeconds by remember(inquiry?.inquiryId, inquiry?.remainingSeconds) {
+        mutableLongStateOf(inquiry?.remainingSeconds ?: 0L)
+    }
+
+    LaunchedEffect(inquiry?.inquiryId, inquiry?.remainingSeconds, inquiry?.status) {
+        val initialSeconds = inquiry?.remainingSeconds ?: 0L
+        if (inquiry?.status.equals("ACTIVE", ignoreCase = true) && initialSeconds > 0) {
+            val startElapsed = SystemClock.elapsedRealtime()
+            liveRemainingSeconds = initialSeconds
+            while (liveRemainingSeconds > 0) {
+                delay(1000L)
+                val elapsed = (SystemClock.elapsedRealtime() - startElapsed) / 1000L
+                liveRemainingSeconds = maxOf(0L, initialSeconds - elapsed)
+            }
+        } else {
+            liveRemainingSeconds = initialSeconds
+        }
+    }
+
+    val isExpired = inquiry?.status == "EXPIRED" || (inquiry?.status == "ACTIVE" && liveRemainingSeconds <= 0)
+    val effectiveStatus = if (isExpired && inquiry?.status == "ACTIVE") "EXPIRED" else (inquiry?.status ?: "ACTIVE")
+
     Scaffold(
         topBar = {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = PureWhite,
+                color = TorobSurface,
                 shadowElevation = 1.dp
             ) {
                 Row(
@@ -64,7 +88,7 @@ fun InquiryDetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "بازگشت",
-                            tint = TextPrimary
+                            tint = TorobTextPrimary
                         )
                     }
 
@@ -73,33 +97,34 @@ fun InquiryDetailScreen(
                             text = "ثبت پاسخ به استعلام",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = TorobTextPrimary
                         )
                         if (inquiry != null) {
                             Text(
                                 text = "کد رهگیری: ${inquiry.trackingCode}",
                                 fontSize = 11.sp,
-                                color = TextSecondary
+                                color = TorobTextSecondary
                             )
                         }
                     }
 
                     if (inquiry != null) {
                         InquiryStatusBadge(
-                            status = inquiry.status,
-                            remainingSeconds = inquiry.remainingSeconds
+                            status = effectiveStatus,
+                            remainingSeconds = liveRemainingSeconds,
+                            autoCountdown = false
                         )
                     }
                 }
             }
         },
         bottomBar = {
-            if (inquiry != null && inquiry.status == "ACTIVE") {
+            if (inquiry != null && inquiry.status == "ACTIVE" && !isExpired) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = PureWhite,
+                    color = TorobSurface,
                     shadowElevation = 8.dp,
-                    border = BorderStroke(1.dp, BorderSubtle)
+                    border = BorderStroke(1.dp, TorobDivider)
                 ) {
                     Box(
                         modifier = Modifier
@@ -115,13 +140,13 @@ fun InquiryDetailScreen(
                                 .fillMaxWidth()
                                 .height(52.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (state.isInStock) PrimaryBlue else ErrorRed
+                                containerColor = if (state.isInStock) TorobRed else TorobError
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             if (state.isSubmitting) {
                                 CircularProgressIndicator(
-                                    color = PureWhite,
+                                    color = TorobSurface,
                                     strokeWidth = 2.5.dp,
                                     modifier = Modifier.size(22.dp)
                                 )
@@ -129,7 +154,7 @@ fun InquiryDetailScreen(
                                 Icon(
                                     imageVector = if (state.isInStock) Icons.AutoMirrored.Filled.Send else Icons.Default.Close,
                                     contentDescription = null,
-                                    tint = PureWhite,
+                                    tint = TorobSurface,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -141,7 +166,7 @@ fun InquiryDetailScreen(
                                     },
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = PureWhite
+                                    color = TorobSurface
                                 )
                             }
                         }
@@ -153,14 +178,14 @@ fun InquiryDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(BackgroundLight)
+                .background(TorobBackground)
                 .padding(innerPadding)
         ) {
             ConnectionStatusBar(isOnline = isOnline)
 
             if (inquiry == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = PrimaryBlue)
+                    CircularProgressIndicator(color = TorobRed)
                 }
             } else {
                 Column(
@@ -179,9 +204,9 @@ fun InquiryDetailScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
+                            .border(1.dp, TorobDivider, RoundedCornerShape(16.dp)),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = PureWhite),
+                        colors = CardDefaults.cardColors(containerColor = TorobSurface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -205,7 +230,7 @@ fun InquiryDetailScreen(
                                         text = inquiry.productTitle,
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = TextPrimary,
+                                        color = TorobTextPrimary,
                                         lineHeight = 22.sp
                                     )
 
@@ -213,20 +238,20 @@ fun InquiryDetailScreen(
                                         Text(
                                             text = "دسته‌بندی: ${inquiry.categoryName}",
                                             fontSize = 11.sp,
-                                            color = TextSecondary
+                                            color = TorobTextSecondary
                                         )
                                     }
 
                                     Text(
                                         text = "مشتری: ${inquiry.customerName}",
                                         fontSize = 11.sp,
-                                        color = TextSecondary
+                                        color = TorobTextSecondary
                                     )
                                 }
                             }
 
                             Spacer(modifier = Modifier.height(14.dp))
-                            HorizontalDivider(color = BorderSubtle, thickness = 0.8.dp)
+                            HorizontalDivider(color = TorobDivider, thickness = 0.8.dp)
                             Spacer(modifier = Modifier.height(12.dp))
 
                             Row(
@@ -237,13 +262,13 @@ fun InquiryDetailScreen(
                                 Text(
                                     text = "قیمت ثبت‌شده مرجع در سایت ترب:",
                                     fontSize = 12.sp,
-                                    color = TextSecondary
+                                    color = TorobTextSecondary
                                 )
                                 Text(
                                     text = PersianFormatters.formatPriceToman(inquiry.recordedPriceToman),
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                                    color = TorobTextPrimary
                                 )
                             }
 
@@ -252,21 +277,21 @@ fun InquiryDetailScreen(
                                 Surface(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(10.dp),
-                                    color = Slate50,
-                                    border = BorderStroke(1.dp, BorderSubtle)
+                                    color = TorobBackground,
+                                    border = BorderStroke(1.dp, TorobDivider)
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
                                         Text(
                                             text = "سوال خریدار:",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = PrimaryBlue
+                                            color = TorobInfo
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = inquiry.userNote,
                                             fontSize = 12.sp,
-                                            color = TextPrimary,
+                                            color = TorobTextPrimary,
                                             lineHeight = 18.sp
                                         )
                                     }
@@ -276,12 +301,12 @@ fun InquiryDetailScreen(
                     }
 
                     // Already Answered or Expired Card
-                    if (inquiry.status == "EXPIRED") {
+                    if (isExpired) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = ErrorRedLight),
+                            colors = CardDefaults.cardColors(containerColor = TorobBackground),
                             shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.3f))
+                            border = BorderStroke(1.dp, TorobDivider)
                         ) {
                             Row(
                                 modifier = Modifier.padding(14.dp),
@@ -291,20 +316,20 @@ fun InquiryDetailScreen(
                                 Icon(
                                     imageVector = Icons.Default.HourglassEmpty,
                                     contentDescription = null,
-                                    tint = ErrorRed,
+                                    tint = TorobTextSecondary,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Column {
                                     Text(
                                         text = "مهلت ۱۰ دقیقه‌ای پاسخ به پایان رسیده است",
-                                        color = ErrorRedDark,
+                                        color = TorobTextPrimary,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         text = "به دلیل اتمام زمان، این استعلام به فروشگاه دیگری منتقل گردید.",
-                                        color = ErrorRedDark,
+                                        color = TorobTextSecondary,
                                         fontSize = 11.sp
                                     )
                                 }
@@ -313,9 +338,9 @@ fun InquiryDetailScreen(
                     } else if (inquiry.status == "ANSWERED") {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = SuccessGreenLight),
+                            colors = CardDefaults.cardColors(containerColor = TorobSuccessLight),
                             shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.3f))
+                            border = BorderStroke(1.dp, TorobSuccess.copy(alpha = 0.3f))
                         ) {
                             Row(
                                 modifier = Modifier.padding(14.dp),
@@ -325,20 +350,20 @@ fun InquiryDetailScreen(
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = null,
-                                    tint = SuccessGreen,
+                                    tint = TorobSuccess,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Column {
                                     Text(
                                         text = "پاسخ با موفقیت به خریدار ارسال شده است",
-                                        color = SuccessGreenDark,
+                                        color = TorobSuccess,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         text = "جزئیات پاسخ شما در بخش «تاریخچه» قابل مشاهده است.",
-                                        color = SuccessGreenDark,
+                                        color = TorobTextSecondary,
                                         fontSize = 11.sp
                                     )
                                 }
@@ -349,9 +374,9 @@ fun InquiryDetailScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
+                                .border(1.dp, TorobDivider, RoundedCornerShape(16.dp)),
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = PureWhite),
+                            colors = CardDefaults.cardColors(containerColor = TorobSurface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
@@ -359,7 +384,7 @@ fun InquiryDetailScreen(
                                     text = "وضعیت موجودی و پیشنهاد قیمت",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                                    color = TorobTextPrimary
                                 )
                                 Spacer(modifier = Modifier.height(14.dp))
 
@@ -374,8 +399,8 @@ fun InquiryDetailScreen(
                                         subtitle = "آماده ارسال و فروش",
                                         icon = Icons.Default.Check,
                                         isSelected = state.isInStock,
-                                        activeColor = SuccessGreen,
-                                        activeBg = SuccessGreenLight,
+                                        activeColor = TorobSuccess,
+                                        activeBg = TorobSuccessLight,
                                         onClick = { viewModel.onStockToggled(true) },
                                         modifier = Modifier.weight(1f)
                                     )
@@ -386,8 +411,8 @@ fun InquiryDetailScreen(
                                         subtitle = "کالا موجود نیست",
                                         icon = Icons.Default.Close,
                                         isSelected = !state.isInStock,
-                                        activeColor = ErrorRed,
-                                        activeBg = ErrorRedLight,
+                                        activeColor = TorobError,
+                                        activeBg = TorobErrorLight,
                                         onClick = { viewModel.onStockToggled(false) },
                                         modifier = Modifier.weight(1f)
                                     )
@@ -425,8 +450,8 @@ fun InquiryDetailScreen(
                                     Surface(
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(10.dp),
-                                        color = ErrorRedLight.copy(alpha = 0.5f),
-                                        border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.2f))
+                                        color = TorobErrorLight.copy(alpha = 0.5f),
+                                        border = BorderStroke(1.dp, TorobError.copy(alpha = 0.2f))
                                     ) {
                                         Row(
                                             modifier = Modifier.padding(12.dp),
@@ -436,13 +461,13 @@ fun InquiryDetailScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Info,
                                                 contentDescription = null,
-                                                tint = ErrorRed,
+                                                tint = TorobError,
                                                 modifier = Modifier.size(18.dp)
                                             )
                                             Text(
                                                 text = "پیام عدم موجودی به خریدار ارسال می‌شود و فیلد قیمت و تعداد کالا غیرفعال شد.",
                                                 fontSize = 11.sp,
-                                                color = ErrorRedDark,
+                                                color = TorobError,
                                                 lineHeight = 17.sp
                                             )
                                         }
@@ -461,10 +486,10 @@ fun InquiryDetailScreen(
                                     minLines = 2,
                                     shape = RoundedCornerShape(12.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = PrimaryBlue,
-                                        unfocusedBorderColor = BorderSubtle,
-                                        focusedContainerColor = PureWhite,
-                                        unfocusedContainerColor = PureWhite
+                                        focusedBorderColor = TorobRed,
+                                        unfocusedBorderColor = TorobDivider,
+                                        focusedContainerColor = TorobSurface,
+                                        unfocusedContainerColor = TorobSurface
                                     )
                                 )
 
@@ -472,7 +497,7 @@ fun InquiryDetailScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                         text = state.errorMessage!!,
-                                        color = ErrorRed,
+                                        color = TorobError,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium
                                     )
@@ -506,11 +531,11 @@ private fun StockOptionCard(
             .clickable(onClick = onClick)
             .border(
                 width = if (isSelected) 1.5.dp else 1.dp,
-                color = if (isSelected) activeColor else BorderSubtle,
+                color = if (isSelected) activeColor else TorobDivider,
                 shape = RoundedCornerShape(12.dp)
             ),
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) activeBg.copy(alpha = 0.4f) else PureWhite
+        color = if (isSelected) activeBg.copy(alpha = 0.4f) else TorobSurface
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
@@ -521,13 +546,13 @@ private fun StockOptionCard(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (isSelected) activeColor else Slate100),
+                    .background(if (isSelected) activeColor else TorobBackground),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (isSelected) PureWhite else Slate500,
+                    tint = if (isSelected) TorobSurface else TorobTextSecondary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -537,12 +562,12 @@ private fun StockOptionCard(
                     text = title,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelected) activeColor else TextPrimary
+                    color = if (isSelected) activeColor else TorobTextPrimary
                 )
                 Text(
                     text = subtitle,
                     fontSize = 10.sp,
-                    color = TextSecondary
+                    color = TorobTextSecondary
                 )
             }
         }

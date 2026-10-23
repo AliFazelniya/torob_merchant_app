@@ -75,14 +75,14 @@ fun ResponseHistoryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundLight)
+            .background(TorobBackground)
     ) {
         ConnectionStatusBar(isOnline = isOnline)
 
         // Top App Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = PureWhite,
+            color = TorobSurface,
             shadowElevation = 1.dp
         ) {
             Row(
@@ -97,21 +97,21 @@ fun ResponseHistoryScreen(
                         text = "تاریخچه استعلام‌ها",
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Black,
-                        color = TextPrimary
+                        color = TorobTextPrimary
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "آرشیو استعلام‌های پاسخ‌داده‌شده و منقضی‌شده",
                         fontSize = 11.sp,
-                        color = TextSecondary
+                        color = TorobTextSecondary
                     )
                 }
 
                 FilledTonalButton(
                     onClick = viewModel::refresh,
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = Slate100,
-                        contentColor = Slate700
+                        containerColor = TorobBackground,
+                        contentColor = TorobTextPrimary
                     ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(10.dp)
@@ -134,7 +134,7 @@ fun ResponseHistoryScreen(
         // Live Search Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = PureWhite,
+            color = TorobSurface,
             shadowElevation = 0.5.dp
         ) {
             Box(
@@ -149,14 +149,14 @@ fun ResponseHistoryScreen(
                         Text(
                             text = "جستجو در نام کالا، کد رهگیری یا نام خریدار...",
                             fontSize = 12.sp,
-                            color = TextSecondary
+                            color = TorobTextSecondary
                         )
                     },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "جستجو",
-                            tint = Slate400,
+                            tint = TorobTextSecondary,
                             modifier = Modifier.size(20.dp)
                         )
                     },
@@ -166,7 +166,7 @@ fun ResponseHistoryScreen(
                                 Icon(
                                     imageVector = Icons.Default.Clear,
                                     contentDescription = "پاک کردن",
-                                    tint = Slate500,
+                                    tint = TorobTextSecondary,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -177,10 +177,10 @@ fun ResponseHistoryScreen(
                     keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryBlue,
-                        unfocusedBorderColor = BorderSubtle,
-                        focusedContainerColor = Slate50,
-                        unfocusedContainerColor = Slate50
+                        focusedBorderColor = TorobRed,
+                        unfocusedBorderColor = TorobDivider,
+                        focusedContainerColor = TorobBackground,
+                        unfocusedContainerColor = TorobBackground
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -190,7 +190,7 @@ fun ResponseHistoryScreen(
         // Filter Tabs
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = PureWhite,
+            color = TorobSurface,
             shadowElevation = 0.5.dp
         ) {
             Row(
@@ -224,15 +224,15 @@ fun ResponseHistoryScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = PrimaryBlue)
+                    CircularProgressIndicator(color = TorobRed)
                 }
             }
 
             historyList.isEmpty() -> {
                 EmptyStateView(
                     icon = Icons.Default.History,
-                    iconTint = PrimaryBlue,
-                    iconBgColor = PrimaryBlueLight,
+                    iconTint = TorobRed,
+                    iconBgColor = TorobRedLight,
                     title = when (historyFilter) {
                         "ANSWERED" -> "هیچ استعلام پاسخ‌داده‌شده‌ای یافت نشد"
                         "EXPIRED" -> "هیچ استعلام منقضی‌شده‌ای وجود ندارد"
@@ -248,8 +248,8 @@ fun ResponseHistoryScreen(
             filteredList.isEmpty() && searchQuery.isNotEmpty() -> {
                 EmptyStateView(
                     icon = Icons.Default.Search,
-                    iconTint = Slate400,
-                    iconBgColor = Slate100,
+                    iconTint = TorobTextSecondary,
+                    iconBgColor = TorobBackground,
                     title = "نتیجه‌ای یافت نشد",
                     description = "استعلامی متناسب با عبارت «$searchQuery» پیدا نشد.",
                     actionButtonText = "پاک کردن جستجو",
@@ -286,8 +286,8 @@ private fun ModernFilterChip(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(10.dp),
-        color = if (isSelected) PrimaryBlue else Slate100,
-        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+        color = if (isSelected) TorobRed else TorobBackground,
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, TorobDivider)
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
@@ -295,7 +295,7 @@ private fun ModernFilterChip(
         ) {
             Text(
                 text = title,
-                color = if (isSelected) PureWhite else TextSecondary,
+                color = if (isSelected) TorobSurface else TorobTextSecondary,
                 fontSize = 12.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
             )
@@ -312,9 +312,9 @@ private fun ModernHistoryCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
+            .border(1.dp, TorobDivider, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        colors = CardDefaults.cardColors(containerColor = TorobSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -328,7 +328,7 @@ private fun ModernHistoryCard(
                     text = "کد رهگیری: ${inquiry.trackingCode}",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Slate500
+                    color = TorobTextSecondary
                 )
 
                 InquiryStatusBadge(status = inquiry.status)
@@ -357,7 +357,7 @@ private fun ModernHistoryCard(
                         text = inquiry.productTitle,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = TorobTextPrimary,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -369,20 +369,20 @@ private fun ModernHistoryCard(
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = TextSecondary,
+                            tint = TorobTextSecondary,
                             modifier = Modifier.size(13.dp)
                         )
                         Text(
                             text = "خریدار: ${inquiry.customerName}",
                             fontSize = 11.sp,
-                            color = TextSecondary
+                            color = TorobTextSecondary
                         )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
-            HorizontalDivider(color = BorderSubtle, thickness = 0.8.dp)
+            HorizontalDivider(color = TorobDivider, thickness = 0.8.dp)
             Spacer(modifier = Modifier.height(8.dp))
 
             // Price Details
@@ -395,14 +395,14 @@ private fun ModernHistoryCard(
                     text = "قیمت مرجع: ${PersianFormatters.formatPriceToman(inquiry.recordedPriceToman)}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
+                    color = TorobTextPrimary
                 )
 
                 Text(
                     text = "مشاهده جزئیات ←",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryBlue
+                    color = TorobRed
                 )
             }
 
@@ -411,7 +411,7 @@ private fun ModernHistoryCard(
                 Text(
                     text = "«${inquiry.userNote}»",
                     fontSize = 11.sp,
-                    color = TextSecondary,
+                    color = TorobTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

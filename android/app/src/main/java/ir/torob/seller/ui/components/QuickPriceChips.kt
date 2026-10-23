@@ -22,7 +22,7 @@ fun QuickPriceChips(
         Text(
             text = "تغییر سریع قیمت با یک لمس:",
             fontSize = 12.sp,
-            color = TextSecondary,
+            color = TorobTextSecondary,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(bottom = 6.dp)
         )
@@ -35,10 +35,10 @@ fun QuickPriceChips(
                 onClick = { onPriceSelected(recordedPrice) },
                 label = { Text("قیمت مرجع", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
                 colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = Slate100,
-                    labelColor = PrimaryBlue
+                    containerColor = TorobBackground,
+                    labelColor = TorobRed
                 ),
-                border = BorderStroke(1.dp, BorderSubtle),
+                border = BorderStroke(1.dp, TorobDivider),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.weight(1f)
             )
@@ -46,10 +46,10 @@ fun QuickPriceChips(
                 onClick = { onPriceSelected(maxOf(0L, currentPrice - 50_000)) },
                 label = { Text("۵۰- هزار", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
                 colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = Slate100,
-                    labelColor = ErrorRed
+                    containerColor = TorobBackground,
+                    labelColor = TorobError
                 ),
-                border = BorderStroke(1.dp, BorderSubtle),
+                border = BorderStroke(1.dp, TorobDivider),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.weight(1f)
             )
@@ -57,10 +57,10 @@ fun QuickPriceChips(
                 onClick = { onPriceSelected(currentPrice + 50_000) },
                 label = { Text("۵۰+ هزار", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
                 colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = Slate100,
-                    labelColor = SuccessGreen
+                    containerColor = TorobBackground,
+                    labelColor = TorobSuccess
                 ),
-                border = BorderStroke(1.dp, BorderSubtle),
+                border = BorderStroke(1.dp, TorobDivider),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.weight(1f)
             )
@@ -68,10 +68,10 @@ fun QuickPriceChips(
                 onClick = { onPriceSelected(currentPrice + 100_000) },
                 label = { Text("۱۰۰+ هزار", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
                 colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = Slate100,
-                    labelColor = SuccessGreen
+                    containerColor = TorobBackground,
+                    labelColor = TorobSuccess
                 ),
-                border = BorderStroke(1.dp, BorderSubtle),
+                border = BorderStroke(1.dp, TorobDivider),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.weight(1f)
             )

@@ -5,16 +5,20 @@ from routers.auth import get_current_seller
 
 router = APIRouter(prefix="/seller/metrics", tags=["Seller Metrics"])
 
+def _to_persian_digits(num_or_str) -> str:
+    persian_digits = {'0': '۰', '1': '۱', '2': '۲', '3': '۳', '4': '۴', '5': '۵', '6': '۶', '7': '۷', '8': '۸', '9': '۹'}
+    return "".join(persian_digits.get(c, c) for c in str(num_or_str))
+
 def _format_duration_persian(seconds: int) -> str:
     if seconds <= 0:
         return "کمتر از ۱ دقیقه"
     minutes = seconds // 60
     rem_seconds = seconds % 60
     if minutes == 0:
-        return f"{rem_seconds} ثانیه"
+        return f"{_to_persian_digits(rem_seconds)} ثانیه"
     if rem_seconds == 0:
-        return f"{minutes} دقیقه"
-    return f"{minutes} دقیقه و {rem_seconds} ثانیه"
+        return f"{_to_persian_digits(minutes)} دقیقه"
+    return f"{_to_persian_digits(minutes)} دقیقه و {_to_persian_digits(rem_seconds)} ثانیه"
 
 @router.get("", response_model=MetricsDto)
 def get_store_metrics(seller: SellerDto = Depends(get_current_seller)):

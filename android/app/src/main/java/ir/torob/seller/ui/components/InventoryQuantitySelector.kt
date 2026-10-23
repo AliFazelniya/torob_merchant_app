@@ -1,11 +1,14 @@
 package ir.torob.seller.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -29,95 +32,115 @@ fun InventoryQuantitySelector(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = if (enabled) Slate50 else Slate100,
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+        shape = RoundedCornerShape(14.dp),
+        color = if (enabled) TorobSurface else TorobBackground,
+        border = BorderStroke(1.dp, TorobDivider)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = "تعداد موجودی آماده ارسال",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (enabled) TextPrimary else TextSecondary
-                )
-                Text(
-                    text = "تعداد کالای موجود در انبار برای تحویل فوری",
-                    fontSize = 11.sp,
-                    color = TextSecondary
-                )
-            }
-
+            // Right Side: Clean Label
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Decrement Button (−)
-                IconButton(
-                    onClick = {
-                        if (quantity > minQuantity) {
-                            onQuantityChange(quantity - 1)
-                        }
-                    },
-                    enabled = enabled && quantity > minQuantity,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (enabled && quantity > minQuantity) PureWhite else Slate200)
-                        .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Remove,
-                        contentDescription = "کاهش تعداد",
-                        tint = if (enabled && quantity > minQuantity) PrimaryBlue else Slate400,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Inventory,
+                    contentDescription = null,
+                    tint = if (enabled) TorobRed else TorobTextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "تعداد موجودی",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (enabled) TorobTextPrimary else TorobTextSecondary
+                )
+            }
 
-                // Quantity Text Display
-                Box(
-                    modifier = Modifier
-                        .defaultMinSize(minWidth = 54.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(PureWhite)
-                        .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
+            // Left Side: Modern Touch-Friendly Segmented Counter
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = TorobSurface,
+                border = BorderStroke(1.dp, TorobDivider)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "${PersianFormatters.toPersianDigits(quantity)} عدد",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (enabled) TextPrimary else TextSecondary
-                    )
-                }
+                    // Decrement Button (−)
+                    Box(
+                        modifier = Modifier
+                            .size(width = 42.dp, height = 40.dp)
+                            .clip(RoundedCornerShape(topStart = 9.dp, bottomStart = 9.dp))
+                            .clickable(
+                                enabled = enabled && quantity > minQuantity,
+                                onClick = { onQuantityChange(quantity - 1) }
+                            )
+                            .background(
+                                if (enabled && quantity > minQuantity) TorobRedLight else TorobBackground
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Remove,
+                            contentDescription = "کاهش تعداد",
+                            tint = if (enabled && quantity > minQuantity) TorobRed else TorobTextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
 
-                // Increment Button (+)
-                IconButton(
-                    onClick = {
-                        if (quantity < maxQuantity) {
-                            onQuantityChange(quantity + 1)
-                        }
-                    },
-                    enabled = enabled && quantity < maxQuantity,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (enabled && quantity < maxQuantity) PureWhite else Slate200)
-                        .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "افزایش تعداد",
-                        tint = if (enabled && quantity < maxQuantity) PrimaryBlue else Slate400,
-                        modifier = Modifier.size(18.dp)
+                    VerticalDivider(
+                        modifier = Modifier.height(24.dp),
+                        thickness = 1.dp,
+                        color = TorobDivider
                     )
+
+                    // Quantity Value Display
+                    Box(
+                        modifier = Modifier
+                            .defaultMinSize(minWidth = 60.dp)
+                            .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${PersianFormatters.toPersianDigits(quantity)} عدد",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (enabled) TorobTextPrimary else TorobTextSecondary
+                        )
+                    }
+
+                    VerticalDivider(
+                        modifier = Modifier.height(24.dp),
+                        thickness = 1.dp,
+                        color = TorobDivider
+                    )
+
+                    // Increment Button (+)
+                    Box(
+                        modifier = Modifier
+                            .size(width = 42.dp, height = 40.dp)
+                            .clip(RoundedCornerShape(topEnd = 9.dp, bottomEnd = 9.dp))
+                            .clickable(
+                                enabled = enabled && quantity < maxQuantity,
+                                onClick = { onQuantityChange(quantity + 1) }
+                            )
+                            .background(
+                                if (enabled && quantity < maxQuantity) TorobRedLight else TorobBackground
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "افزایش تعداد",
+                            tint = if (enabled && quantity < maxQuantity) TorobRed else TorobTextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }

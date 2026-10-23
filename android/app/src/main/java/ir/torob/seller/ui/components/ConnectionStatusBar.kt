@@ -13,8 +13,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ir.torob.seller.ui.theme.TorobAmber
-import ir.torob.seller.ui.theme.TorobGreen
+import ir.torob.seller.ui.theme.TorobWarning
+import ir.torob.seller.ui.theme.TorobInfo
 import ir.torob.seller.util.PersianFormatters
 
 @Composable
@@ -27,7 +27,7 @@ fun ConnectionStatusBar(
         enter = expandVertically(),
         exit = shrinkVertically()
     ) {
-        val bgColor = if (!isOnline) TorobAmber else Color(0xFF0284C7)
+        val bgColor = if (!isOnline) TorobWarning else TorobInfo
         val text = if (!isOnline) {
             if (pendingSyncCount > 0) {
                 "عدم اتصال به شبکه • ${PersianFormatters.toPersianDigits(pendingSyncCount)} پاسخ در حافظه گوشی ذخیره شده و پس از اتصال ارسال می‌شود"

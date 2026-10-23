@@ -23,8 +23,8 @@ fun EmptyStateView(
     title: String,
     description: String,
     modifier: Modifier = Modifier,
-    iconTint: Color = PrimaryBlue,
-    iconBgColor: Color = PrimaryBlueLight,
+    iconTint: Color = TorobRed,
+    iconBgColor: Color = TorobRedLight,
     actionButtonText: String? = null,
     onActionClick: (() -> Unit)? = null
 ) {
@@ -59,7 +59,7 @@ fun EmptyStateView(
                 text = title,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                color = TorobTextPrimary,
                 textAlign = TextAlign.Center
             )
 
@@ -68,7 +68,7 @@ fun EmptyStateView(
             Text(
                 text = description,
                 fontSize = 12.sp,
-                color = TextSecondary,
+                color = TorobTextSecondary,
                 textAlign = TextAlign.Center,
                 lineHeight = 19.sp,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -79,14 +79,14 @@ fun EmptyStateView(
                 Button(
                     onClick = onActionClick,
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                    colors = ButtonDefaults.buttonColors(containerColor = TorobRed),
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
                 ) {
                     Text(
                         text = actionButtonText,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = PureWhite
+                        color = TorobSurface
                     )
                 }
             }

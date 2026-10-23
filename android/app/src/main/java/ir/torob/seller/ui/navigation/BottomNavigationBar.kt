@@ -51,7 +51,7 @@ fun BottomNavigationBar(
     }
 
     NavigationBar(
-        containerColor = PureWhite,
+        containerColor = TorobSurface,
         tonalElevation = 8.dp
     ) {
         items.forEach { item ->
@@ -74,7 +74,7 @@ fun BottomNavigationBar(
                         BadgedBox(
                             badge = {
                                 Badge(
-                                    containerColor = ErrorRed,
+                                    containerColor = TorobRed,
                                     contentColor = PureWhite
                                 ) {
                                     Text(
@@ -107,11 +107,11 @@ fun BottomNavigationBar(
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = PrimaryBlue,
-                    selectedTextColor = PrimaryBlue,
-                    indicatorColor = PrimaryBlueLight,
-                    unselectedIconColor = Slate500,
-                    unselectedTextColor = Slate500
+                    selectedIconColor = TorobRed,
+                    selectedTextColor = TorobRed,
+                    indicatorColor = TorobRedLight,
+                    unselectedIconColor = TorobTextSecondary,
+                    unselectedTextColor = TorobTextSecondary
                 )
             )
         }

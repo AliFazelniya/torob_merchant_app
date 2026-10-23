@@ -1,5 +1,6 @@
 package ir.torob.seller.ui.components
 
+import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,7 +12,7 @@ import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,35 +23,56 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ir.torob.seller.ui.theme.*
 import ir.torob.seller.util.PersianFormatters
+import kotlinx.coroutines.delay
 
 @Composable
 fun InquiryStatusBadge(
     status: String,
     remainingSeconds: Long = 0L,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    autoCountdown: Boolean = true
 ) {
+    var liveSeconds by remember(status, remainingSeconds) { mutableLongStateOf(remainingSeconds) }
+
+    LaunchedEffect(status, remainingSeconds, autoCountdown) {
+        if (autoCountdown && status.equals("ACTIVE", ignoreCase = true) && remainingSeconds > 0) {
+            val startElapsed = SystemClock.elapsedRealtime()
+            val initialSeconds = remainingSeconds
+            liveSeconds = initialSeconds
+            while (liveSeconds > 0) {
+                delay(1000L)
+                val elapsed = (SystemClock.elapsedRealtime() - startElapsed) / 1000L
+                liveSeconds = maxOf(0L, initialSeconds - elapsed)
+            }
+        } else {
+            liveSeconds = remainingSeconds
+        }
+    }
+
+    val currentSeconds = if (autoCountdown) liveSeconds else remainingSeconds
+
     val (bgColor: Color, textColor: Color, icon: ImageVector, text: String) = when (status.uppercase()) {
         "ACTIVE" -> {
-            if (remainingSeconds in 1..180) {
-                // Urgent: under 3 minutes left
+            if (currentSeconds in 1..180) {
+                // Urgent: under 3 minutes left -> amber warning (NOT red)
                 Tuple4(
-                    ErrorRedLight,
-                    ErrorRed,
+                    TorobWarningLight,
+                    WarningAmberDark,
                     Icons.Default.WarningAmber,
-                    "فرصت فوری: ${PersianFormatters.formatRemainingTime(remainingSeconds)}"
+                    "فرصت فوری: ${PersianFormatters.formatRemainingTime(currentSeconds)}"
                 )
-            } else if (remainingSeconds > 180) {
+            } else if (currentSeconds > 180) {
                 // Active with standard countdown
                 Tuple4(
-                    WarningAmberLight,
-                    WarningAmberDark,
+                    TorobWarningLight,
+                    TorobWarning,
                     Icons.Default.AccessTime,
-                    "مهلت: ${PersianFormatters.formatRemainingTime(remainingSeconds)}"
+                    "مهلت: ${PersianFormatters.formatRemainingTime(currentSeconds)}"
                 )
             } else {
                 Tuple4(
-                    Slate100,
-                    Slate600,
+                    TorobBackground,
+                    TorobTextSecondary,
                     Icons.Default.HourglassEmpty,
                     "منقضی شده"
                 )
@@ -58,32 +80,32 @@ fun InquiryStatusBadge(
         }
         "ANSWERED" -> {
             Tuple4(
-                SuccessGreenLight,
-                SuccessGreenDark,
+                TorobSuccessLight,
+                TorobSuccess,
                 Icons.Default.Check,
                 "پاسخ داده شد"
             )
         }
         "OUT_OF_STOCK" -> {
             Tuple4(
-                ErrorRedLight,
-                ErrorRed,
+                TorobErrorLight,
+                TorobError,
                 Icons.Default.Close,
                 "عدم موجودی"
             )
         }
         "EXPIRED" -> {
             Tuple4(
-                Slate100,
-                Slate600,
+                TorobBackground,
+                TorobTextSecondary,
                 Icons.Default.HourglassEmpty,
                 "منقضی شده"
             )
         }
         else -> {
             Tuple4(
-                Slate100,
-                Slate600,
+                TorobBackground,
+                TorobTextSecondary,
                 Icons.Default.HourglassEmpty,
                 status
             )

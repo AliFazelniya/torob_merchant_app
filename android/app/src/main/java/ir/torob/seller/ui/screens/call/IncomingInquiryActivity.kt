@@ -61,23 +61,23 @@ import kotlinx.coroutines.withContext
 enum class DeclineReason(val code: String, val title: String, val description: String) {
     STORE_CLOSED(
         code = "STORE_CLOSED",
-        title = "فروشگاه بسته است",
+        title = "فروشگاه در حال حاضر بسته است",
         description = "فروشگاه در حال حاضر تعطیل است یا امکان ارائه خدمت ندارد"
-    ),
-    BUSY(
-        code = "BUSY",
-        title = "فرصت پاسخگویی ندارم",
-        description = "به دلیل حجم کاری بالا در حال حاضر امکان استعلام قیمت مقدور نیست"
-    ),
-    WRONG_PRODUCT(
-        code = "WRONG_PRODUCT",
-        title = "محصول اشتباه است",
-        description = "مشخصات یا تنوع محصول با کالای عرضه شده مطابقت ندارد"
     ),
     PRODUCT_NOT_SUPPORTED(
         code = "PRODUCT_NOT_SUPPORTED",
-        title = "این محصول را پشتیبانی نمی‌کنیم",
-        description = "توقف فروش یا عدم تامین این قلم کالا توسط فروشگاه"
+        title = "این محصول در فروشگاه ارائه نمیشود",
+        description = "عدم تامین یا توقف فروش این قلم کالا توسط فروشگاه"
+    ),
+    BUSY(
+        code = "BUSY",
+        title = "امکان بررسی قیمت را ندارم",
+        description = "به دلیل حجم کاری بالا یا عدم دسترسی به موجودی دقیق در حال حاضر مقدور نیست"
+    ),
+    WRONG_PRODUCT(
+        code = "WRONG_PRODUCT",
+        title = "درخواست اشتباه است",
+        description = "مشخصات یا تنوع کالا با محصول عرضه شده در فروشگاه مطابقت ندارد"
     ),
     OTHER(
         code = "OTHER",
@@ -405,13 +405,13 @@ fun SmartInquiryCallScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Urgent Countdown Timer Badge
+                // Response Deadline Countdown Indicator (Warm Amber styling)
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = if (isUrgent) Color(0xFF450A0A).copy(alpha = 0.8f) else Color(0xFF1E293B),
+                    color = if (isUrgent) TorobOutOfStockBackground else Color(0xFF1E293B),
                     border = BorderStroke(
-                        1.2.dp,
-                        if (isUrgent) ErrorRed else Color(0xFF334155)
+                        1.dp,
+                        if (isUrgent) TorobOutOfStockBorder else Color(0xFF334155)
                     )
                 ) {
                     Row(
@@ -421,13 +421,13 @@ fun SmartInquiryCallScreen(
                         Icon(
                             imageVector = Icons.Default.AccessTime,
                             contentDescription = null,
-                            tint = if (isUrgent) ErrorRedLight else WarningAmber,
+                            tint = if (isUrgent) TorobOutOfStockContent else TorobWarning,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "مهلت پاسخگویی: ${PersianFormatters.formatRemainingTime(remainingSeconds)}",
-                            color = if (isUrgent) ErrorRedLight else Slate100,
+                            text = if (isUrgent) "فرصت فوری: ${PersianFormatters.formatRemainingTime(remainingSeconds)}" else "مهلت پاسخگویی: ${PersianFormatters.formatRemainingTime(remainingSeconds)}",
+                            color = if (isUrgent) TorobOutOfStockContent else Slate100,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -600,8 +600,8 @@ fun SmartInquiryCallScreen(
                         .height(54.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = PrimaryBlue,
-                        contentColor = PureWhite
+                        containerColor = TorobRed,
+                        contentColor = TorobSurface
                     ),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                 ) {
@@ -659,13 +659,13 @@ fun SmartInquiryCallScreen(
                     }
                 }
 
-                // 3. Secondary Actions Split: Out-of-Stock vs Decline
+                // 3. Secondary Actions Split: Out-of-Stock vs Decline (Two buttons side by side)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Dedicated "اعلام عدم موجودی" Button (Distinct business action)
-                    OutlinedButton(
+                    // Secondary Action 1: "اعلام عدم موجودی" (Warm Light Amber appearance)
+                    Button(
                         onClick = {
                             if (!isSubmitting) {
                                 isSubmitting = true
@@ -677,51 +677,53 @@ fun SmartInquiryCallScreen(
                             .weight(1f)
                             .height(48.dp),
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color(0xFF451A03).copy(alpha = 0.5f),
-                            contentColor = WarningAmberLight
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = TorobOutOfStockBackground,
+                            contentColor = TorobOutOfStockContent
                         ),
-                        border = BorderStroke(1.dp, WarningAmberDark)
+                        border = BorderStroke(1.dp, TorobOutOfStockBorder)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Inventory,
                             contentDescription = null,
-                            tint = WarningAmberLight,
+                            tint = TorobOutOfStockContent,
                             modifier = Modifier.size(17.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "اعلام عدم موجودی",
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = TorobOutOfStockContent
                         )
                     }
 
-                    // Dedicated "رد استعلام" Button (Opens decline modal sheet)
-                    OutlinedButton(
+                    // Secondary Action 2: "رد استعلام" (Neutral dark navy / slate appearance)
+                    Button(
                         onClick = { showDeclineSheet = true },
                         enabled = !isSubmitting,
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color(0xFF1E293B),
-                            contentColor = Color(0xFFFCA5A5)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = TorobDeclineBackground,
+                            contentColor = TorobDeclineContent
                         ),
-                        border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.5f))
+                        border = BorderStroke(1.dp, TorobDeclineBorder)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = null,
-                            tint = Color(0xFFFCA5A5),
+                            tint = TorobDeclineContent,
                             modifier = Modifier.size(17.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "رد استعلام",
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = TorobDeclineContent
                         )
                     }
                 }
@@ -757,7 +759,7 @@ fun SmartInquiryCallScreen(
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    text = "چرا می‌خواهید استعلام را رد کنید؟",
+                    text = "دلیل رد استعلام را انتخاب کنید",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = PureWhite
@@ -784,7 +786,7 @@ fun SmartInquiryCallScreen(
                         color = if (isSelected) Color(0xFF1E293B) else Color.Transparent,
                         border = BorderStroke(
                             1.dp,
-                            if (isSelected) PrimaryBlue.copy(alpha = 0.8f) else Color(0xFF334155)
+                            if (isSelected) TorobOutOfStockBorder else Color(0xFF334155)
                         )
                     ) {
                         Row(
@@ -797,7 +799,7 @@ fun SmartInquiryCallScreen(
                                 selected = isSelected,
                                 onClick = { selectedDeclineReason = reason },
                                 colors = RadioButtonDefaults.colors(
-                                    selectedColor = PrimaryBlue,
+                                    selectedColor = TorobOutOfStockBorder,
                                     unselectedColor = Slate400
                                 )
                             )
@@ -807,7 +809,7 @@ fun SmartInquiryCallScreen(
                                     text = reason.title,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) PureWhite else Slate200
+                                    color = if (isSelected) TorobSurface else Slate200
                                 )
                                 Text(
                                     text = reason.description,
@@ -825,7 +827,7 @@ fun SmartInquiryCallScreen(
                         Surface(
                             shape = RoundedCornerShape(14.dp),
                             color = Color(0xFF1E293B),
-                            border = BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.4f)),
+                            border = BorderStroke(1.dp, TorobOutOfStockBorder.copy(alpha = 0.5f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -839,7 +841,7 @@ fun SmartInquiryCallScreen(
                                     checked = closeShopOnDecline,
                                     onCheckedChange = { closeShopOnDecline = it },
                                     colors = CheckboxDefaults.colors(
-                                        checkedColor = PrimaryBlue,
+                                        checkedColor = TorobOutOfStockBorder,
                                         uncheckedColor = Slate400
                                     )
                                 )
@@ -849,7 +851,7 @@ fun SmartInquiryCallScreen(
                                         text = "تغییر وضعیت فروشگاه به تعطیل موقت",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = PureWhite
+                                        color = TorobSurface
                                     )
                                     Text(
                                         text = "با فعال‌سازی، فروشگاه موقتاً بسته شده و تا زمان بازگشایی مجدد استعلامی دریافت نخواهید کرد.",
@@ -875,9 +877,9 @@ fun SmartInquiryCallScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = PrimaryBlue,
+                                focusedBorderColor = TorobOutOfStockBorder,
                                 unfocusedBorderColor = Color(0xFF334155),
-                                focusedTextColor = PureWhite,
+                                focusedTextColor = TorobSurface,
                                 unfocusedTextColor = Slate100
                             ),
                             maxLines = 3
@@ -887,7 +889,7 @@ fun SmartInquiryCallScreen(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // Bottom Action Buttons in Sheet
+                // Bottom Action Buttons in Sheet: Secondary (بازگشت) and Primary (تأیید و رد استعلام)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -903,7 +905,7 @@ fun SmartInquiryCallScreen(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Slate300),
                         border = BorderStroke(1.dp, Color(0xFF334155))
                     ) {
-                        Text("انصراف", fontSize = 13.sp)
+                        Text("بازگشت", fontSize = 13.sp)
                     }
 
                     Button(
@@ -921,12 +923,18 @@ fun SmartInquiryCallScreen(
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = ErrorRed,
-                            contentColor = PureWhite
+                            containerColor = Color(0xFF334155),
+                            contentColor = Color.White,
+                            disabledContainerColor = Color(0xFF1E293B),
+                            disabledContentColor = Slate500
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            if (selectedDeclineReason != null) TorobDeclineBorder else Color.Transparent
                         )
                     ) {
                         Text(
-                            text = "ثبت و رد استعلام",
+                            text = "تأیید و رد استعلام",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )

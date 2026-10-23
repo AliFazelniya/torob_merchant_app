@@ -2,25 +2,42 @@ package ir.torob.seller.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Modern Business Productivity Palette (Material 3)
-val PrimaryBlue = Color(0xFF1D4ED8)
-val PrimaryBlueLight = Color(0xFFDBEAFE)
-val PrimaryBlueDark = Color(0xFF1E40AF)
-val PrimaryBlueHover = Color(0xFF2563EB)
+// ==========================================
+// Torob-Inspired Centralized Color Palette
+// ==========================================
 
-val SuccessGreen = Color(0xFF15803D)
-val SuccessGreenLight = Color(0xFFDCFCE7)
-val SuccessGreenDark = Color(0xFF14532D)
+// Brand Colors
+val TorobRed = Color(0xFFE53935)
+val TorobRedDark = Color(0xFFC62828)
+val TorobRedLight = Color(0xFFFFF1F0)
 
-val WarningAmber = Color(0xFFD97706)
-val WarningAmberLight = Color(0xFFFEF3C7)
-val WarningAmberDark = Color(0xFFB45309)
+// Neutral Colors
+val TorobBackground = Color(0xFFF7F7F8)
+val TorobSurface = Color(0xFFFFFFFF)
+val TorobTextPrimary = Color(0xFF252525)
+val TorobTextSecondary = Color(0xFF757575)
+val TorobDivider = Color(0xFFE0E0E0)
 
-val ErrorRed = Color(0xFFDC2626)
-val ErrorRedLight = Color(0xFFFEE2E2)
-val ErrorRedDark = Color(0xFF991B1B)
+// Semantic Colors
+val TorobSuccess = Color(0xFF2E7D32)
+val TorobSuccessLight = Color(0xFFE8F5E9)
+val TorobWarning = Color(0xFFED8B00)
+val TorobWarningLight = Color(0xFFFFF3E0)
+val TorobInfo = Color(0xFF1976D2)
+val TorobInfoLight = Color(0xFFE3F2FD)
+val TorobError = Color(0xFFC62828)
+val TorobErrorLight = Color(0xFFFFEBEE)
 
-// Neutral Slate Palette
+// Incoming Inquiry Action Tokens
+val TorobOutOfStockBackground = Color(0xFFFFF3E0)
+val TorobOutOfStockContent = Color(0xFF8A4B00)
+val TorobOutOfStockBorder = Color(0xFFED8B00)
+
+val TorobDeclineBackground = Color(0xFF1E293B)
+val TorobDeclineContent = Color(0xFFFFFFFF)
+val TorobDeclineBorder = Color(0xFF334155)
+
+// Neutral Slate Palette (for subtle hierarchy & dark backgrounds)
 val Slate900 = Color(0xFF0F172A)
 val Slate800 = Color(0xFF1E293B)
 val Slate700 = Color(0xFF334155)
@@ -31,24 +48,36 @@ val Slate300 = Color(0xFFCBD5E1)
 val Slate200 = Color(0xFFE2E8F0)
 val Slate100 = Color(0xFFF1F5F9)
 val Slate50 = Color(0xFFF8FAFC)
-val PureWhite = Color(0xFFFFFFFF)
+val PureWhite = TorobSurface
 
 // Semantic Surface & Border Tokens
-val BackgroundLight = Slate50
-val SurfaceLight = PureWhite
-val SurfaceVariantLight = Slate100
-val BorderSubtle = Slate200
-val TextPrimary = Slate900
-val TextSecondary = Slate500
-val TextMuted = Slate400
+val BackgroundLight = TorobBackground
+val SurfaceLight = TorobSurface
+val SurfaceVariantLight = Color(0xFFF0F0F2)
+val BorderSubtle = TorobDivider
+val TextPrimary = TorobTextPrimary
+val TextSecondary = TorobTextSecondary
+val TextMuted = Color(0xFF9E9E9E)
 
-// Legacy / Torob brand compatibility aliases
-val TorobRed = Color(0xFFDC2626)
-val TorobDarkRed = Color(0xFFB71C1C)
-val TorobLightRed = Color(0xFFFEE2E2)
+// Semantic Compatibility Aliases
+val TorobDarkRed = TorobRedDark
+val TorobLightRed = TorobRedLight
+val TorobGreen = TorobSuccess
+val TorobLightGreen = TorobSuccessLight
+val TorobAmber = TorobWarning
+val TorobLightAmber = TorobWarningLight
+val SuccessGreen = TorobSuccess
+val SuccessGreenLight = TorobSuccessLight
+val SuccessGreenDark = Color(0xFF14532D)
+val WarningAmber = TorobWarning
+val WarningAmberLight = TorobWarningLight
+val WarningAmberDark = Color(0xFFB45309)
+val ErrorRed = TorobError
+val ErrorRedLight = TorobErrorLight
+val ErrorRedDark = Color(0xFF991B1B)
 
-val TorobGreen = SuccessGreen
-val TorobLightGreen = SuccessGreenLight
-
-val TorobAmber = WarningAmber
-val TorobLightAmber = WarningAmberLight
+// Brand Primary Aliases (mapped to Torob Red system)
+val PrimaryBlue = TorobRed
+val PrimaryBlueLight = TorobRedLight
+val PrimaryBlueDark = TorobRedDark
+val PrimaryBlueHover = Color(0xFFD32F2F)

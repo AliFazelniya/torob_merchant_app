@@ -23,6 +23,12 @@ class AuthRepository(private val context: Context) {
 
     fun getShopId(): String = prefs.getString("shop_id", "shop_51d0c1a6edf81ba759726bab") ?: "shop_51d0c1a6edf81ba759726bab"
 
+    fun getSellerName(): String = prefs.getString("full_name", "علی رضایی (فروشگاه موبایل تخت جمشید)") ?: "علی رضایی (فروشگاه موبایل تخت جمشید)"
+
+    fun getPhoneNumber(): String = prefs.getString("phone_number", "09123456789") ?: "09123456789"
+
+    fun getSellerId(): String = prefs.getString("seller_id", "seller_test_001") ?: "seller_test_001"
+
     suspend fun requestOtp(phone: String): Result<RequestOtpResponse> {
         return try {
             val response = api.requestOtp(RequestOtpRequest(phone))

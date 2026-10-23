@@ -91,6 +91,16 @@ class InquiryViewModel(private val repository: InquiryRepository) : ViewModel() 
         }
     }
 
+    fun silentRefresh() {
+        viewModelScope.launch {
+            try {
+                repository.fetchRemoteInquiries()
+            } catch (_: Exception) {
+                // Background sync failure handled silently
+            }
+        }
+    }
+
     fun loadInquiryDetail(inquiryId: String) {
         _detailUiState.value = InquiryDetailUiState()
         viewModelScope.launch {
