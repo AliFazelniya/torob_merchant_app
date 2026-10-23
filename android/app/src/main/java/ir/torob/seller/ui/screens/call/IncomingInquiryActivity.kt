@@ -7,47 +7,90 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.CallEnd
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.QuestionAnswer
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import ir.torob.seller.MainActivity
+import ir.torob.seller.data.local.InquiryEntity
+import ir.torob.seller.data.model.ShopUpdateDto
+import ir.torob.seller.data.repository.InquiryRepository
+import ir.torob.seller.data.repository.ShopRepository
 import ir.torob.seller.service.InquiryAlertService
 import ir.torob.seller.ui.theme.*
 import ir.torob.seller.util.InquiryRingtoneManager
-
-import androidx.compose.ui.text.TextStyle
-import ir.torob.seller.data.repository.InquiryRepository
+import ir.torob.seller.util.PersianFormatters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+enum class DeclineReason(val code: String, val title: String, val description: String) {
+    STORE_CLOSED(
+        code = "STORE_CLOSED",
+        title = "فروشگاه بسته است",
+        description = "فروشگاه در حال حاضر تعطیل است یا امکان ارائه خدمت ندارد"
+    ),
+    BUSY(
+        code = "BUSY",
+        title = "فرصت پاسخگویی ندارم",
+        description = "به دلیل حجم کاری بالا در حال حاضر امکان استعلام قیمت مقدور نیست"
+    ),
+    WRONG_PRODUCT(
+        code = "WRONG_PRODUCT",
+        title = "محصول اشتباه است",
+        description = "مشخصات یا تنوع محصول با کالای عرضه شده مطابقت ندارد"
+    ),
+    PRODUCT_NOT_SUPPORTED(
+        code = "PRODUCT_NOT_SUPPORTED",
+        title = "این محصول را پشتیبانی نمی‌کنیم",
+        description = "توقف فروش یا عدم تامین این قلم کالا توسط فروشگاه"
+    ),
+    OTHER(
+        code = "OTHER",
+        title = "سایر موارد",
+        description = "دلیل دیگری که در گزینه‌های فوق ذکر نشده است"
+    )
+}
 
 class IncomingInquiryActivity : ComponentActivity() {
+
+    private var currentInquiryId by mutableStateOf("inq_01")
+    private var currentFallbackTitle by mutableStateOf("استعلام جدید خریدار")
+    private var currentFallbackBody by mutableStateOf("خریدار منتظر پاسخ قیمت و موجودی شماست")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,21 +98,23 @@ class IncomingInquiryActivity : ComponentActivity() {
         // Wake screen and turn on over lockscreen
         turnScreenOnAndDismissKeyguard()
 
-        val inquiryId = intent.getStringExtra("inquiry_id") ?: "inq_01"
+        extractIntentExtras(intent)
 
         setContent {
             CompositionLocalProvider(
                 LocalLayoutDirection provides LayoutDirection.Rtl,
                 LocalTextStyle provides TextStyle(fontFamily = VazirFontFamily)
             ) {
-                IncomingCallScreen(
-                    inquiryId = inquiryId,
+                SmartInquiryCallScreen(
+                    inquiryId = currentInquiryId,
+                    fallbackTitle = currentFallbackTitle,
+                    fallbackBody = currentFallbackBody,
                     onAnswer = {
                         stopRingingAndAlert()
                         val mainIntent = Intent(this, MainActivity::class.java).apply {
                             action = Intent.ACTION_VIEW
-                            data = Uri.parse("torob://inquiry/$inquiryId")
-                            putExtra("inquiry_id", inquiryId)
+                            data = Uri.parse("torob://inquiry/$currentInquiryId")
+                            putExtra("inquiry_id", currentInquiryId)
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
                                     Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -77,26 +122,102 @@ class IncomingInquiryActivity : ComponentActivity() {
                         startActivity(mainIntent)
                         finish()
                     },
-                    onDecline = {
+                    onQuickConfirmPrice = { price ->
                         stopRingingAndAlert()
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
                                 InquiryRepository(applicationContext).submitResponse(
-                                    inquiryId = inquiryId,
-                                    priceToman = 0L,
-                                    inStock = false,
-                                    notes = "اعلام عدم موجودی از صفحه تماس",
-                                    stockCount = 0
+                                    inquiryId = currentInquiryId,
+                                    priceToman = price,
+                                    inStock = true,
+                                    stockCount = 1,
+                                    notes = "تأیید سریع قیمت ثبت‌شده قبلی"
                                 )
-                            } catch (e: Exception) {
-                                // Handled via offline sync queue
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(applicationContext, "قیمت قبلی با موفقیت تأیید و ارسال شد", Toast.LENGTH_SHORT).show()
+                                    finish()
+                                }
+                            } catch (_: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    finish()
+                                }
                             }
                         }
+                    },
+                    onOutOfStock = {
+                        stopRingingAndAlert()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                InquiryRepository(applicationContext).submitResponse(
+                                    inquiryId = currentInquiryId,
+                                    priceToman = 0L,
+                                    inStock = false,
+                                    stockCount = 0,
+                                    notes = "عدم موجودی در انبار"
+                                )
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(applicationContext, "عدم موجودی کالا ثبت شد", Toast.LENGTH_SHORT).show()
+                                    finish()
+                                }
+                            } catch (_: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    finish()
+                                }
+                            }
+                        }
+                    },
+                    onConfirmDecline = { reason, customNote, closeShop ->
+                        stopRingingAndAlert()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val declineNote = buildString {
+                                    append("رد استعلام: [${reason.code}] ${reason.title}")
+                                    if (customNote.isNotBlank()) {
+                                        append(" - $customNote")
+                                    }
+                                }
+                                InquiryRepository(applicationContext).submitResponse(
+                                    inquiryId = currentInquiryId,
+                                    priceToman = 0L,
+                                    inStock = false,
+                                    stockCount = 0,
+                                    notes = declineNote
+                                )
+                                if (closeShop && reason == DeclineReason.STORE_CLOSED) {
+                                    ShopRepository(applicationContext).updateShopProfile(
+                                        ShopUpdateDto(isOpen = false)
+                                    )
+                                }
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(applicationContext, "استعلام با موفقیت رد شد", Toast.LENGTH_SHORT).show()
+                                    finish()
+                                }
+                            } catch (_: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    finish()
+                                }
+                            }
+                        }
+                    },
+                    onDismiss = {
+                        stopRingingAndAlert()
                         finish()
                     }
                 )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        extractIntentExtras(intent)
+    }
+
+    private fun extractIntentExtras(intent: Intent) {
+        currentInquiryId = intent.getStringExtra("inquiry_id") ?: "inq_01"
+        currentFallbackTitle = intent.getStringExtra("title") ?: "استعلام جدید خریدار"
+        currentFallbackBody = intent.getStringExtra("body") ?: "خریدار منتظر پاسخ قیمت و موجودی شماست"
     }
 
     private fun turnScreenOnAndDismissKeyguard() {
@@ -123,16 +244,13 @@ class IncomingInquiryActivity : ComponentActivity() {
                 action = InquiryAlertService.ACTION_STOP_ALERT
             }
             startService(stopIntent)
-        } catch (e: Exception) {
-            // Ignored
-        }
+        } catch (_: Exception) {}
         try {
             stopService(Intent(this, InquiryAlertService::class.java))
-        } catch (e: Exception) {
-            // Ignored
-        }
+        } catch (_: Exception) {}
     }
 
+    @Suppress("DEPRECATION")
     override fun onBackPressed() {
         stopRingingAndAlert()
         super.onBackPressed()
@@ -144,32 +262,70 @@ class IncomingInquiryActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun IncomingCallScreen(
+fun SmartInquiryCallScreen(
     inquiryId: String,
+    fallbackTitle: String,
+    fallbackBody: String,
     onAnswer: () -> Unit,
-    onDecline: () -> Unit
+    onQuickConfirmPrice: (Long) -> Unit,
+    onOutOfStock: () -> Unit,
+    onConfirmDecline: (DeclineReason, String, Boolean) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    // Pulsing animation for call ring effect
+    val context = LocalContext.current
+    var inquiry by remember { mutableStateOf<InquiryEntity?>(null) }
+    var remainingSeconds by remember { mutableLongStateOf(600L) }
+    var isSubmitting by remember { mutableStateOf(false) }
+
+    // Bottom Sheet for Declining Inquiry
+    var showDeclineSheet by remember { mutableStateOf(false) }
+    var selectedDeclineReason by remember { mutableStateOf<DeclineReason?>(null) }
+    var customDeclineNote by remember { mutableStateOf("") }
+    var closeShopOnDecline by remember { mutableStateOf(false) }
+
+    // Load full inquiry data from Repository
+    LaunchedEffect(inquiryId) {
+        val repo = InquiryRepository(context)
+        val item = repo.getInquiryById(inquiryId)
+        if (item != null) {
+            inquiry = item
+            if (item.remainingSeconds > 0) {
+                remainingSeconds = item.remainingSeconds
+            }
+        }
+    }
+
+    // Ticking countdown timer
+    LaunchedEffect(remainingSeconds) {
+        if (remainingSeconds > 0) {
+            delay(1000L)
+            remainingSeconds -= 1
+        }
+    }
+
+    // Pulsing indicator for live inquiry effect
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.28f,
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
+            animation = tween(900, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "scale"
+        label = "pulseAlpha"
     )
-    val outerPulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.55f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "outerScale"
-    )
+
+    val productTitle = inquiry?.productTitle ?: fallbackTitle
+    val trackingCode = inquiry?.trackingCode ?: "TRB-NEW"
+    val recordedPrice = inquiry?.recordedPriceToman ?: 0L
+    val buyerNote = inquiry?.userNote ?: fallbackBody
+    val customerName = inquiry?.customerName ?: "خریدار در ترب"
+    val categoryName = inquiry?.categoryName ?: "کالای دیجیتال"
+    val imageUrl = inquiry?.productImageUrl
+
+    val isUrgent = remainingSeconds <= 180
 
     Box(
         modifier = Modifier
@@ -177,164 +333,626 @@ fun IncomingCallScreen(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF0F172A), // Slate 900
-                        Color(0xFF1E293B), // Slate 800
-                        Color(0xFF0B1120)  // Deep Midnight
+                        Color(0xFF070B14),
+                        Color(0xFF0F172A),
+                        Color(0xFF1E293B)
                     )
                 )
             )
-            .padding(horizontal = 24.dp, vertical = 40.dp)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top Minimal Section
+            // --- TOP HEADER: Status badge, tracking code, live countdown timer ---
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = TorobRed.copy(alpha = 0.15f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, TorobRed.copy(alpha = 0.35f))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    // Live Inquiry Pulsing Badge
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0xFF1E293B),
+                        border = BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.6f))
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(TorobRed)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(9.dp)
+                                    .scale(1f)
+                                    .clip(CircleShape)
+                                    .background(PrimaryBlueHover.copy(alpha = pulseAlpha))
+                            )
+                            Spacer(modifier = Modifier.width(7.dp))
+                            Text(
+                                text = "استعلام لحظه‌ای خریدار",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Tracking Code Chip
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0xFF1E293B),
+                        border = BorderStroke(1.dp, Color(0xFF334155))
+                    ) {
                         Text(
-                            text = "استعلام خریدار در ترب",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                            text = "کد: ${PersianFormatters.toPersianDigits(trackingCode)}",
+                            color = Slate300,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Text(
-                    text = "تماس ورودی استعلام",
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Black,
-                    textAlign = TextAlign.Center
-                )
+                // Urgent Countdown Timer Badge
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (isUrgent) Color(0xFF450A0A).copy(alpha = 0.8f) else Color(0xFF1E293B),
+                    border = BorderStroke(
+                        1.2.dp,
+                        if (isUrgent) ErrorRed else Color(0xFF334155)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = null,
+                            tint = if (isUrgent) ErrorRedLight else WarningAmber,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "مهلت پاسخگویی: ${PersianFormatters.formatRemainingTime(remainingSeconds)}",
+                            color = if (isUrgent) ErrorRedLight else Slate100,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
 
-            // Center: Pulsing Ring Animation (Clean & Minimal, No Card)
-            Box(
-                modifier = Modifier.size(240.dp),
-                contentAlignment = Alignment.Center
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // --- CENTER: Prominent Product Information Card ---
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = Color(0xFF1E293B),
+                border = BorderStroke(1.2.dp, Color(0xFF334155)),
+                shadowElevation = 8.dp
             ) {
-                // Outermost subtle halo ring
-                Box(
-                    modifier = Modifier
-                        .size(210.dp)
-                        .scale(outerPulseScale)
-                        .clip(CircleShape)
-                        .background(TorobRed.copy(alpha = 0.08f))
-                )
+                Column(
+                    modifier = Modifier.padding(18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        // Product Image with graceful placeholder
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color(0xFF0F172A),
+                            border = BorderStroke(1.dp, Color(0xFF334155)),
+                            modifier = Modifier.size(86.dp)
+                        ) {
+                            if (!imageUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(imageUrl)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = productTitle,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ShoppingBag,
+                                        contentDescription = null,
+                                        tint = Slate400,
+                                        modifier = Modifier.size(38.dp)
+                                    )
+                                }
+                            }
+                        }
 
-                // Middle pulsing ring
-                Box(
-                    modifier = Modifier
-                        .size(150.dp)
-                        .scale(pulseScale)
-                        .clip(CircleShape)
-                        .background(TorobRed.copy(alpha = 0.22f))
-                )
+                        Spacer(modifier = Modifier.width(14.dp))
 
-                // Inner core button with call icon
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(TorobRed, TorobDarkRed)
+                        // Product Title & Metadata
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = productTitle,
+                                color = PureWhite,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = 22.sp
                             )
-                        ),
-                    contentAlignment = Alignment.Center
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Slate400,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = customerName,
+                                    color = Slate400,
+                                    fontSize = 11.sp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "• $categoryName",
+                                    color = Slate500,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // Buyer note or request
+                    if (buyerNote.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFF0F172A),
+                            border = BorderStroke(1.dp, Color(0xFF334155)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QuestionAnswer,
+                                    contentDescription = null,
+                                    tint = PrimaryBlueLight,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "«$buyerNote»",
+                                    color = Slate200,
+                                    fontSize = 11.sp,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+
+                    // Recorded / Reference Price
+                    if (recordedPrice > 0) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        HorizontalDivider(color = Color(0xFF334155), thickness = 0.8.dp)
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "آخرین قیمت ثبت‌شده در ترب:",
+                                color = Slate400,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = PersianFormatters.formatPriceToman(recordedPrice),
+                                color = Color(0xFF93C5FD),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // --- BOTTOM ACTIONS: Primary, Quick Confirm, Out of Stock, Decline ---
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // 1. Primary Action: "اعلام قیمت و موجودی" (Navigates to detail response screen)
+                Button(
+                    onClick = onAnswer,
+                    enabled = !isSubmitting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryBlue,
+                        contentColor = PureWhite
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Call,
+                        imageVector = Icons.Default.EditNote,
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(44.dp)
+                        modifier = Modifier.size(22.dp)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "اعلام قیمت و موجودی",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Icon(
+                        imageVector = Icons.Default.ChevronLeft,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // 2. Quick 1-Tap Confirmation for Recorded Price (if available)
+                if (recordedPrice > 0) {
+                    FilledTonalButton(
+                        onClick = {
+                            if (!isSubmitting) {
+                                isSubmitting = true
+                                onQuickConfirmPrice(recordedPrice)
+                            }
+                        },
+                        enabled = !isSubmitting,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = Color(0xFF14532D),
+                            contentColor = Color(0xFFDCFCE7)
+                        ),
+                        border = BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.6f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = Color(0xFFDCFCE7),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "تأیید سریع قیمت قبلی (${PersianFormatters.formatPriceToman(recordedPrice)})",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // 3. Secondary Actions Split: Out-of-Stock vs Decline
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Dedicated "اعلام عدم موجودی" Button (Distinct business action)
+                    OutlinedButton(
+                        onClick = {
+                            if (!isSubmitting) {
+                                isSubmitting = true
+                                onOutOfStock()
+                            }
+                        },
+                        enabled = !isSubmitting,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color(0xFF451A03).copy(alpha = 0.5f),
+                            contentColor = WarningAmberLight
+                        ),
+                        border = BorderStroke(1.dp, WarningAmberDark)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Inventory,
+                            contentDescription = null,
+                            tint = WarningAmberLight,
+                            modifier = Modifier.size(17.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "اعلام عدم موجودی",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Dedicated "رد استعلام" Button (Opens decline modal sheet)
+                    OutlinedButton(
+                        onClick = { showDeclineSheet = true },
+                        enabled = !isSubmitting,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color(0xFF1E293B),
+                            contentColor = Color(0xFFFCA5A5)
+                        ),
+                        border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.5f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            tint = Color(0xFFFCA5A5),
+                            modifier = Modifier.size(17.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "رد استعلام",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
+        }
+    }
 
-            // Bottom Section: Professional Answer & Decline Action Buttons
-            Row(
+    // --- Material 3 Decline Reasons Modal Bottom Sheet ---
+    if (showDeclineSheet) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                if (!isSubmitting) showDeclineSheet = false
+            },
+            containerColor = Color(0xFF0F172A),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            dragHandle = {
+                Box(
+                    modifier = Modifier
+                        .padding(vertical = 10.dp)
+                        .width(42.dp)
+                        .height(4.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF334155))
+                )
+            }
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .imePadding()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.Start
             ) {
-                // Red "عدم موجودی" Button
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Button(
-                        onClick = onDecline,
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = TorobRed),
-                        modifier = Modifier.size(72.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CallEnd,
-                            contentDescription = "عدم موجودی",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
+                Text(
+                    text = "چرا می‌خواهید استعلام را رد کنید؟",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PureWhite
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "لطفاً دلیل عدم امکان پاسخگویی به این استعلام را مشخص فرمایید.",
+                    fontSize = 12.sp,
+                    color = Slate400
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Predefined reasons list
+                DeclineReason.values().forEach { reason ->
+                    val isSelected = selectedDeclineReason == reason
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { selectedDeclineReason = reason },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected) Color(0xFF1E293B) else Color.Transparent,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) PrimaryBlue.copy(alpha = 0.8f) else Color(0xFF334155)
                         )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { selectedDeclineReason = reason },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = PrimaryBlue,
+                                    unselectedColor = Slate400
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = reason.title,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) PureWhite else Slate200
+                                )
+                                Text(
+                                    text = reason.description,
+                                    fontSize = 11.sp,
+                                    color = Slate400
+                                )
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "عدم موجودی",
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
 
-                // Green "بررسی استعلام" Button
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Button(
-                        onClick = onAnswer,
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = TorobGreen),
-                        modifier = Modifier.size(72.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Call,
-                            contentDescription = "بررسی استعلام",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
+                // Special Handling: STORE_CLOSED -> Option to temporarily close store
+                AnimatedVisibility(visible = selectedDeclineReason == DeclineReason.STORE_CLOSED) {
+                    Column(modifier = Modifier.padding(top = 10.dp)) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0xFF1E293B),
+                            border = BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { closeShopOnDecline = !closeShopOnDecline }
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = closeShopOnDecline,
+                                    onCheckedChange = { closeShopOnDecline = it },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = PrimaryBlue,
+                                        uncheckedColor = Slate400
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text(
+                                        text = "تغییر وضعیت فروشگاه به تعطیل موقت",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PureWhite
+                                    )
+                                    Text(
+                                        text = "با فعال‌سازی، فروشگاه موقتاً بسته شده و تا زمان بازگشایی مجدد استعلامی دریافت نخواهید کرد.",
+                                        fontSize = 10.sp,
+                                        color = Slate400,
+                                        lineHeight = 15.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Custom Note Field if OTHER is selected
+                AnimatedVisibility(visible = selectedDeclineReason == DeclineReason.OTHER) {
+                    Column(modifier = Modifier.padding(top = 10.dp)) {
+                        OutlinedTextField(
+                            value = customDeclineNote,
+                            onValueChange = { customDeclineNote = it },
+                            placeholder = {
+                                Text("توضیح کوتاه درباره دلیل رد استعلام...", fontSize = 12.sp, color = Slate400)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryBlue,
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedTextColor = PureWhite,
+                                unfocusedTextColor = Slate100
+                            ),
+                            maxLines = 3
                         )
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "بررسی استعلام",
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Bottom Action Buttons in Sheet
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showDeclineSheet = false },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Slate300),
+                        border = BorderStroke(1.dp, Color(0xFF334155))
+                    ) {
+                        Text("انصراف", fontSize = 13.sp)
+                    }
+
+                    Button(
+                        onClick = {
+                            val reason = selectedDeclineReason ?: return@Button
+                            if (!isSubmitting) {
+                                isSubmitting = true
+                                showDeclineSheet = false
+                                onConfirmDecline(reason, customDeclineNote, closeShopOnDecline)
+                            }
+                        },
+                        enabled = selectedDeclineReason != null && !isSubmitting,
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ErrorRed,
+                            contentColor = PureWhite
+                        )
+                    ) {
+                        Text(
+                            text = "ثبت و رد استعلام",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+// Backward-compatibility alias
+@Composable
+fun IncomingCallScreen(
+    inquiryId: String,
+    onAnswer: () -> Unit,
+    onDecline: () -> Unit
+) {
+    SmartInquiryCallScreen(
+        inquiryId = inquiryId,
+        fallbackTitle = "استعلام جدید خریدار",
+        fallbackBody = "خریدار منتظر پاسخ قیمت و موجودی شماست",
+        onAnswer = onAnswer,
+        onQuickConfirmPrice = { onAnswer() },
+        onOutOfStock = onDecline,
+        onConfirmDecline = { _, _, _ -> onDecline() },
+        onDismiss = onDecline
+    )
+}
+
