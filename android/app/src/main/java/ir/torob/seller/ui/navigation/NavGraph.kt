@@ -104,6 +104,13 @@ fun AppNavGraph(
                     onRequestNotificationPermission = onRequestNotificationPermission,
                     onInquiryClick = { inqId ->
                         navController.navigate(Screen.InquiryDetail.createRoute(inqId))
+                    },
+                    onNavigateToHistory = {
+                        navController.navigate(Screen.History.route) {
+                            popUpTo(Screen.Inquiries.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }

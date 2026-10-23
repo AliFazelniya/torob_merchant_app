@@ -26,7 +26,9 @@ fun EmptyStateView(
     iconTint: Color = TorobRed,
     iconBgColor: Color = TorobRedLight,
     actionButtonText: String? = null,
-    onActionClick: (() -> Unit)? = null
+    onActionClick: (() -> Unit)? = null,
+    secondaryActionText: String? = null,
+    onSecondaryActionClick: (() -> Unit)? = null
 ) {
     Box(
         modifier = modifier
@@ -63,30 +65,45 @@ fun EmptyStateView(
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = description,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                lineHeight = 19.sp,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                lineHeight = 20.sp,
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
 
             if (actionButtonText != null && onActionClick != null) {
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 Button(
                     onClick = onActionClick,
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = TorobRed),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
                 ) {
                     Text(
                         text = actionButtonText,
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = PureWhite
+                    )
+                }
+            }
+
+            if (secondaryActionText != null && onSecondaryActionClick != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+                TextButton(
+                    onClick = onSecondaryActionClick,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = secondaryActionText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }

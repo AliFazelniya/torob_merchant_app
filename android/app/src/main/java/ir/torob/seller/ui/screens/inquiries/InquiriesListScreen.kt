@@ -38,7 +38,8 @@ fun InquiriesListScreen(
     isOnline: Boolean,
     hasNotificationPermission: Boolean,
     onRequestNotificationPermission: () -> Unit,
-    onInquiryClick: (String) -> Unit
+    onInquiryClick: (String) -> Unit,
+    onNavigateToHistory: () -> Unit = {}
 ) {
     val activeInquiries by viewModel.activeInquiries.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -185,9 +186,11 @@ fun InquiriesListScreen(
                     iconTint = TorobRed,
                     iconBgColor = TorobRedLight,
                     title = "هیچ استعلام فعالی در انتظار پاسخ نیست",
-                    description = "استعلام‌های جدید مشتریان به محض ثبت به صورت اعلان و زنگ به شما اطلاع‌رسانی خواهند شد.\nاستعلام‌های پاسخ‌داده‌شده را می‌توانید در تب «تاریخچه» مشاهده کنید.",
+                    description = "استعلام‌های جدید به محض ثبت با زنگ و اعلان به شما اطلاع داده می‌شوند.",
                     actionButtonText = "بروزرسانی صندوق",
                     onActionClick = viewModel::refresh,
+                    secondaryActionText = "مشاهده استعلام‌های گذشته در تب تاریخچه ←",
+                    onSecondaryActionClick = onNavigateToHistory,
                     modifier = Modifier.fillMaxSize()
                 )
             }
