@@ -26,15 +26,11 @@ fun SyncBadge(
     syncState: SyncState?,
     modifier: Modifier = Modifier
 ) {
-    if (syncState == null) return
+    // Do not display 'ثبت نهایی در سرور' when successfully synced on server. Only show pending offline states.
+    if (syncState == null || syncState == SyncState.SYNCED_ON_SERVER) return
 
     val (bg, textColor, icon, label) = when (syncState) {
-        SyncState.SYNCED_ON_SERVER -> Quadruple(
-            TorobSuccessLight,
-            TorobSuccess,
-            Icons.Default.CheckCircle,
-            "ثبت نهایی در سرور"
-        )
+        SyncState.SYNCED_ON_SERVER -> return
         SyncState.SAVED_ON_PHONE -> Quadruple(
             TorobWarningLight,
             TorobWarning,

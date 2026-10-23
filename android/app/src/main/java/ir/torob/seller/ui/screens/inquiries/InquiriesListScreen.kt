@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ir.torob.seller.data.local.getLiveRemainingSeconds
 import androidx.compose.ui.unit.sp
 import android.os.SystemClock
 import ir.torob.seller.data.local.InquiryEntity
@@ -58,15 +59,19 @@ fun InquiriesListScreen(
         }
     }
 
-    val urgentCount = remember(activeInquiries) {
-        activeInquiries.count { it.remainingSeconds in 1..180 }
+    val liveActiveInquiries = remember(activeInquiries) {
+        activeInquiries.filter { it.getLiveRemainingSeconds() > 0 && it.status.equals("ACTIVE", ignoreCase = true) }
     }
 
-    val filteredInquiries = remember(activeInquiries, filterType) {
+    val urgentCount = remember(liveActiveInquiries) {
+        liveActiveInquiries.count { it.getLiveRemainingSeconds() in 1..180 }
+    }
+
+    val filteredInquiries = remember(liveActiveInquiries, filterType) {
         when (filterType) {
-            "URGENT" -> activeInquiries.filter { it.remainingSeconds in 1..180 }
-            "NORMAL" -> activeInquiries.filter { it.remainingSeconds !in 1..180 }
-            else -> activeInquiries
+            "URGENT" -> liveActiveInquiries.filter { it.getLiveRemainingSeconds() in 1..180 }
+            "NORMAL" -> liveActiveInquiries.filter { it.getLiveRemainingSeconds() !in 1..180 }
+            else -> liveActiveInquiries
         }
     }
 
@@ -98,14 +103,14 @@ fun InquiriesListScreen(
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    if (activeInquiries.isNotEmpty() && isOnline && isServerConnected) {
+                    if (liveActiveInquiries.isNotEmpty() && isOnline && isServerConnected) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Text(
-                                text = "${PersianFormatters.toPersianDigits(activeInquiries.size)} مورد",
+                                text = "${PersianFormatters.toPersianDigits(liveActiveInquiries.size)} مورد",
                                 color = MaterialTheme.colorScheme.primary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -147,10 +152,10 @@ fun InquiriesListScreen(
         }
 
         // Interactive Summary Cards (All, Urgent, Normal)
-        if (activeInquiries.isNotEmpty() && isOnline && isServerConnected) {
+        if (liveActiveInquiries.isNotEmpty() && isOnline && isServerConnected) {
             Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                 InquirySummaryCards(
-                    activeCount = activeInquiries.size,
+                    activeCount = liveActiveInquiries.size,
                     urgentCount = urgentCount,
                     selectedFilter = filterType,
                     onFilterSelected = { filterType = it }
@@ -160,7 +165,7 @@ fun InquiriesListScreen(
 
         // Content Area
         when {
-            isLoading && activeInquiries.isEmpty() -> {
+            isLoading && liveActiveInquiries.isEmpty() -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -182,7 +187,7 @@ fun InquiriesListScreen(
                 )
             }
 
-            activeInquiries.isEmpty() -> {
+            liveActiveInquiries.isEmpty() -> {
                 EmptyStateView(
                     icon = Icons.Default.Inbox,
                     iconTint = TorobRed,
@@ -219,7 +224,8 @@ fun InquiriesListScreen(
                     items(filteredInquiries, key = { it.inquiryId }) { inq ->
                         ModernInquiryCard(
                             inquiry = inq,
-                            onClick = { onInquiryClick(inq.inquiryId) }
+                            onClick = { onInquiryClick(inq.inquiryId) },
+                            onExpired = { inqId -> viewModel.markInquiryExpired(inqId) }
                         )
                     }
                 }
@@ -231,24 +237,30 @@ fun InquiriesListScreen(
 @Composable
 private fun ModernInquiryCard(
     inquiry: InquiryEntity,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onExpired: (String) -> Unit = {}
 ) {
     var liveRemainingSeconds by remember(inquiry.inquiryId, inquiry.remainingSeconds) {
-        mutableLongStateOf(inquiry.remainingSeconds)
+        mutableLongStateOf(inquiry.getLiveRemainingSeconds())
     }
 
     LaunchedEffect(inquiry.inquiryId, inquiry.remainingSeconds, inquiry.status) {
-        if (inquiry.status.equals("ACTIVE", ignoreCase = true) && inquiry.remainingSeconds > 0) {
-            val startElapsed = SystemClock.elapsedRealtime()
-            val initialSeconds = inquiry.remainingSeconds
+        if (inquiry.status.equals("ACTIVE", ignoreCase = true)) {
+            val initialSeconds = inquiry.getLiveRemainingSeconds()
             liveRemainingSeconds = initialSeconds
-            while (liveRemainingSeconds > 0) {
-                delay(1000L)
-                val elapsed = (SystemClock.elapsedRealtime() - startElapsed) / 1000L
-                liveRemainingSeconds = maxOf(0L, initialSeconds - elapsed)
+            if (initialSeconds <= 0L) {
+                onExpired(inquiry.inquiryId)
+            } else {
+                val startElapsed = SystemClock.elapsedRealtime()
+                while (liveRemainingSeconds > 0) {
+                    delay(1000L)
+                    val elapsed = (SystemClock.elapsedRealtime() - startElapsed) / 1000L
+                    liveRemainingSeconds = maxOf(0L, initialSeconds - elapsed)
+                }
+                onExpired(inquiry.inquiryId)
             }
         } else {
-            liveRemainingSeconds = inquiry.remainingSeconds
+            liveRemainingSeconds = inquiry.getLiveRemainingSeconds()
         }
     }
 

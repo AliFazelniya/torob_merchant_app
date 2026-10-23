@@ -58,7 +58,7 @@ fun OtpVerifyScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "تایید شماره تلفن همراه",
+                        text = "تایید شماره تلفن فروشگاه",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Slate900
@@ -76,7 +76,7 @@ fun OtpVerifyScreen(
                     if (state.demoOtp != null) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "کد تایید پیامک‌شده: ${state.demoOtp}",
+                            text = "کد تایید: ${state.demoOtp}",
                             fontSize = 13.sp,
                             color = TorobGreen,
                             fontWeight = FontWeight.Bold

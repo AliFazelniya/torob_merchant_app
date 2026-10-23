@@ -20,6 +20,14 @@ router = APIRouter(prefix="/admin", tags=["Admin Control Panel"])
 def get_all_inquiries(limit: int = 50):
     conn = get_db()
     cursor = conn.cursor()
+    now_iso = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("""
+    UPDATE inquiries
+    SET status = 'EXPIRED'
+    WHERE status = 'ACTIVE' AND datetime(expires_at) <= datetime(?)
+    """, (now_iso,))
+    conn.commit()
+
     cursor.execute("""
     SELECT * FROM inquiries
     ORDER BY created_at DESC
@@ -357,3 +365,89 @@ def reject_shop_change_request(request_id: str, review: Optional[ShopChangeReque
         reviewed_at=str(updated_req["reviewed_at"]),
         review_notes=updated_req["review_notes"]
     )
+
+
+# --- Voice Notifications & Outbound Calls Admin Endpoints ---
+
+@router.post("/voice-reminders/evaluate")
+async def evaluate_voice_reminders_admin(
+    shop_id: Optional[str] = None,
+    dispatch: bool = False
+):
+    """
+    Evaluate stores for unanswered inquiry voice reminders.
+    If dispatch=True, places outbound reminder calls for eligible stores.
+    """
+    from services.voice.inquiry_reminder_policy import reminder_policy
+    from services.voice.voice_service import voice_service
+
+    if shop_id:
+        eval_res = reminder_policy.evaluate_store(shop_id)
+        results = [eval_res]
+    else:
+        results = reminder_policy.evaluate_all_active_stores()
+
+    dispatched_calls = []
+    if dispatch:
+        for r in results:
+            if r.eligible:
+                call_res = await voice_service.dispatch_unanswered_inquiry_reminder(r)
+                if call_res:
+                    dispatched_calls.append({
+                        "shop_id": r.shop_id,
+                        "call_id": call_res.call_id,
+                        "provider_call_id": call_res.provider_call_id,
+                        "status": call_res.status.value,
+                        "message": call_res.message
+                    })
+
+    return {
+        "evaluated_count": len(results),
+        "eligible_count": sum(1 for r in results if r.eligible),
+        "dispatched_count": len(dispatched_calls),
+        "results": [
+            {
+                "shop_id": r.shop_id,
+                "shop_name": r.shop_name,
+                "phone": r.phone,
+                "eligible": r.eligible,
+                "reason": r.reason,
+                "total_inquiries": r.total_inquiries,
+                "unanswered_count": r.unanswered_count,
+                "unanswered_rate": r.unanswered_rate,
+                "time_window": r.time_window_label
+            } for r in results
+        ],
+        "dispatched_calls": dispatched_calls
+    }
+
+
+@router.get("/outbound-calls")
+def get_outbound_call_logs_admin(
+    limit: int = 50,
+    offset: int = 0,
+    scenario: Optional[str] = None
+):
+    """View outbound voice call audit logs (guaranteed without sensitive OTPs)."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    query = "SELECT * FROM outbound_call_logs"
+    params = []
+    if scenario:
+        query += " WHERE scenario_type = ?"
+        params.append(scenario)
+
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+
+    return {
+        "limit": limit,
+        "offset": offset,
+        "count": len(rows),
+        "calls": [dict(r) for r in rows]
+    }

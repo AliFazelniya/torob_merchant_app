@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ir.torob.seller.data.local.InquiryEntity
 import ir.torob.seller.data.local.SyncState
+import ir.torob.seller.data.local.getLiveRemainingSeconds
 import ir.torob.seller.data.repository.InquiryRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -76,9 +78,69 @@ class InquiryViewModel(private val repository: InquiryRepository) : ViewModel() 
 
     private val _detailUiState = MutableStateFlow(InquiryDetailUiState())
     val detailUiState: StateFlow<InquiryDetailUiState> = _detailUiState.asStateFlow()
+    private val alertedInquiryIds = mutableSetOf<String>()
 
     init {
         refresh()
+        startPeriodicSyncAndUrgentCheck()
+    }
+
+    private fun startPeriodicSyncAndUrgentCheck() {
+        viewModelScope.launch {
+            while (true) {
+                delay(3000L)
+                if (_isServerConnected.value) {
+                    try {
+                        repository.fetchRemoteInquiries()
+                    } catch (_: Exception) {}
+                }
+
+                // Check active inquiries for urgent ringing (<= 120s) or auto-expiry (<= 0s)
+                val currentActive = activeInquiries.value
+                for (inq in currentActive) {
+                    val remaining = inq.getLiveRemainingSeconds()
+                    if (remaining <= 0) {
+                        markInquiryExpired(inq.inquiryId)
+                    } else if (remaining in 1..120 && inq.inquiryId !in alertedInquiryIds) {
+                        alertedInquiryIds.add(inq.inquiryId)
+                        triggerUrgentCall(inq)
+                    }
+                }
+            }
+        }
+    }
+
+    fun markInquiryExpired(inquiryId: String) {
+        viewModelScope.launch {
+            repository.markInquiryExpired(inquiryId)
+            try {
+                ir.torob.seller.util.InquiryRingtoneManager.stopRinging(repository.context)
+                val stopIntent = android.content.Intent(repository.context, ir.torob.seller.service.InquiryAlertService::class.java).apply {
+                    action = ir.torob.seller.service.InquiryAlertService.ACTION_STOP_ALERT
+                }
+                repository.context.startService(stopIntent)
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun triggerUrgentCall(inquiry: InquiryEntity) {
+        try {
+            val ctx = repository.context
+            val intent = android.content.Intent(ctx, ir.torob.seller.service.InquiryAlertService::class.java).apply {
+                action = ir.torob.seller.service.InquiryAlertService.ACTION_START_ALERT
+                putExtra("inquiry_id", inquiry.inquiryId)
+                putExtra("title", "تماس فوری استعلام ترب")
+                putExtra("body", "فقط ۲ دقیقه تا پایان مهلت پاسخ به استعلام «${inquiry.productTitle}» باقی مانده است!")
+                putExtra("duration_seconds", minOf(120, inquiry.getLiveRemainingSeconds().toInt()))
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                ctx.startForegroundService(intent)
+            } else {
+                ctx.startService(intent)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("InquiryViewModel", "Error triggering urgent call: ${e.message}", e)
+        }
     }
 
     fun selectTab(tab: String) {

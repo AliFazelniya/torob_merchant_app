@@ -34,25 +34,53 @@ def get_current_seller(authorization: str = Header(None)) -> SellerDto:
         is_active=bool(row["is_active"])
     )
 
+from services.voice.phone_utils import normalize_phone_number, is_valid_phone, is_iranian_landline
+from services.voice.voice_service import voice_service
+from services.voice.models import CallStatus
+from services.sms_service import send_otp, verify_otp, generate_secure_otp
+
 @router.post("/request-otp", response_model=RequestOtpResponse)
-def request_otp_endpoint(payload: RequestOtpRequest):
-    phone = payload.phone_number.strip().replace(" ", "")
-    if len(phone) < 10:
+async def request_otp_endpoint(payload: RequestOtpRequest):
+    phone = normalize_phone_number(payload.phone_number)
+    if not is_valid_phone(phone):
         raise HTTPException(status_code=400, detail="شماره تلفن وارد شده نامعتبر است")
 
-    success, msg, code = send_otp(phone)
-    # Always return demo OTP if configured or mock
-    demo_otp = code if (settings.SMS_PROVIDER == "mock" or not settings.SMS_API_KEY) else None
+    # Determine whether to deliver via voice call (landline) or SMS (mobile)
+    if is_iranian_landline(phone):
+        is_limited, err_msg, code = generate_secure_otp(phone)
+        if is_limited:
+            raise HTTPException(status_code=429, detail=err_msg)
 
-    return RequestOtpResponse(
-        success=True,
-        message=msg,
-        demo_otp=demo_otp
-    )
+        # Dispatch Voice Call via Poshteyar
+        call_result = await voice_service.dispatch_landline_otp(phone, code)
+        if call_result.status == CallStatus.FAILED:
+            error_msg = call_result.message or "برقراری تماس صوتی با خطا مواجه شد"
+            raise HTTPException(status_code=500, detail=f"خطا در تماس صوتی: {error_msg}")
+
+        demo_otp = code if (settings.OUTBOUND_CALL_PROVIDER == "mock" or not settings.POSHTYAR_API_KEY) else None
+        return RequestOtpResponse(
+            success=True,
+            message="کد تایید به صورت تماس صوتی به خط ثابت فروشگاه شما اعلام خواهد شد.",
+            demo_otp=demo_otp,
+            delivery_method="voice_call"
+        )
+    else:
+        # Standard Mobile SMS Flow
+        success, msg, code = send_otp(phone)
+        if not success:
+            raise HTTPException(status_code=429, detail=msg)
+
+        demo_otp = code if (settings.SMS_PROVIDER == "mock" or not settings.SMS_API_KEY) else None
+        return RequestOtpResponse(
+            success=True,
+            message=msg,
+            demo_otp=demo_otp,
+            delivery_method="sms"
+        )
 
 @router.post("/verify-otp", response_model=TokenResponse)
 def verify_otp_endpoint(payload: VerifyOtpRequest):
-    phone = payload.phone_number.strip().replace(" ", "")
+    phone = normalize_phone_number(payload.phone_number)
     code = payload.otp_code.strip()
 
     if not verify_otp(phone, code):

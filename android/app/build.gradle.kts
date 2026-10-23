@@ -23,7 +23,7 @@ android {
 
         // Backend server base URL configuration
         buildConfigField("String", "BASE_URL", "\"http://127.0.0.1:8080/api/\"")
-        buildConfigField("Boolean", "SKIP_OTP_AUTH", "true")
+        buildConfigField("Boolean", "SKIP_OTP_AUTH", "false")
     }
 
     buildTypes {

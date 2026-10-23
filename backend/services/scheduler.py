@@ -19,12 +19,18 @@ class InquiryScheduler:
         """Fetch dynamic reminder and expiration timeouts in seconds from DB."""
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT config_key, config_value FROM scheduler_configs")
-        configs = {row["config_key"]: int(row["config_value"]) for row in cursor.fetchall()}
+        configs = {}
+        for row in cursor.fetchall():
+            key = row["config_key"]
+            val = row["config_value"]
+            try:
+                configs[key] = int(float(val))
+            except (ValueError, TypeError):
+                configs[key] = val
         conn.close()
 
-        reminder_secs = configs.get("reminder_timeout_seconds", 300)
-        expiry_secs = configs.get("expiration_timeout_seconds", 600)
+        reminder_secs = int(configs.get("reminder_timeout_seconds", 300))
+        expiry_secs = int(configs.get("expiration_timeout_seconds", 600))
         return reminder_secs, expiry_secs
 
     async def register_inquiry_time_zero(self, inquiry_id: str, shop_id: str, product_title: str):
@@ -200,13 +206,39 @@ class InquiryScheduler:
 
         conn.close()
 
+    async def run_voice_reminders_evaluation(self):
+        """Evaluate stores eligible for automated unanswered inquiry voice reminder calls."""
+        if not settings.VOICE_REMINDERS_ENABLED:
+            return
+
+        try:
+            from services.voice.inquiry_reminder_policy import reminder_policy
+            from services.voice.voice_service import voice_service
+
+            results = reminder_policy.evaluate_all_active_stores()
+            for res in results:
+                if res.eligible:
+                    logger.info(
+                        f"[VOICE REMINDER] Triggering reminder call for store {res.shop_id} "
+                        f"({res.unanswered_count}/{res.total_inquiries} unanswered in {res.time_window_label})"
+                    )
+                    await voice_service.dispatch_unanswered_inquiry_reminder(res)
+        except Exception as e:
+            logger.error(f"Error in store voice reminders evaluation: {e}", exc_info=True)
+
     async def start(self):
         """Start scheduler background loop."""
         self.is_running = True
         logger.info("Starting Inquiry Scheduler engine (checking every 5 seconds)...")
+        tick_count = 0
         while self.is_running:
             try:
                 await self.run_scheduler_tick()
+
+                # Run store voice reminders evaluation every 60 seconds (every 12 ticks)
+                tick_count += 1
+                if tick_count % 12 == 0:
+                    await self.run_voice_reminders_evaluation()
             except Exception as e:
                 logger.error(f"Error in scheduler tick: {e}", exc_info=True)
             await asyncio.sleep(5)

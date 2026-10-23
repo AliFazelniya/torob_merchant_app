@@ -12,7 +12,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-class InquiryRepository(private val context: Context) {
+class InquiryRepository(val context: Context) {
     private val api = ApiClient.getService(context)
     private val db = SellerDatabase.getDatabase(context)
     private val inquiryDao = db.inquiryDao()
@@ -44,6 +44,10 @@ class InquiryRepository(private val context: Context) {
     suspend fun clearAllLocalData() {
         inquiryDao.clearAllInquiries()
         syncQueueDao.clearAll()
+    }
+
+    suspend fun markInquiryExpired(inquiryId: String) {
+        inquiryDao.updateInquiryStatus(inquiryId, "EXPIRED")
     }
 
     suspend fun fetchRemoteInquiries(status: String? = null): Result<List<InquiryDto>> {

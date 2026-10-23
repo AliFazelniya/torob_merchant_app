@@ -10,6 +10,7 @@ class RequestOtpResponse(BaseModel):
     success: bool
     message: str
     demo_otp: Optional[str] = None  # Provided in development/demo mode
+    delivery_method: str = "sms"  # "sms" or "voice_call"
 
 class VerifyOtpRequest(BaseModel):
     phone_number: str = Field(..., example="09123456789")
@@ -41,6 +42,7 @@ class ShopDto(BaseModel):
     manual_is_open: bool = True
     is_within_working_hours: bool = True
     status_message: Optional[str] = None
+    voice_reminders_enabled: bool = True
 
 class ShopUpdateDto(BaseModel):
     shop_name: Optional[str] = None
@@ -51,6 +53,7 @@ class ShopUpdateDto(BaseModel):
     close_time: Optional[str] = None
     accept_inquiries: Optional[bool] = None
     holiday_mode: Optional[bool] = None
+    voice_reminders_enabled: Optional[bool] = None
 
 class ShopChangeRequestCreateDto(BaseModel):
     requested_shop_name: Optional[str] = None

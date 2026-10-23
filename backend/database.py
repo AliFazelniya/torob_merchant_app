@@ -172,8 +172,31 @@ def init_db():
     )
     """)
 
-    # Safe migrations for shop_settings extra columns
-    for col, col_type in [("category_names", "TEXT"), ("lat", "REAL"), ("lon", "REAL"), ("website_url", "TEXT")]:
+    # 10. Outbound Call Audit Logs (Poshteyar & Voice Notifications)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS outbound_call_logs (
+        call_id TEXT PRIMARY KEY,
+        scenario_type TEXT NOT NULL, -- 'LANDLINE_OTP', 'UNANSWERED_INQUIRY_REMINDER'
+        destination_number TEXT NOT NULL, -- clean / masked destination number (NEVER stores plaintext OTP)
+        provider TEXT NOT NULL, -- 'poshteyar', 'mock', etc.
+        provider_call_id TEXT,
+        status TEXT NOT NULL, -- 'PENDING', 'CALL_REQUESTED', 'CALLING', 'ANSWERED', 'BUSY', 'NO_ANSWER', 'FAILED', 'COMPLETED'
+        shop_id TEXT,
+        error_code TEXT,
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # Safe migration for shop_settings extra columns
+    for col, col_type in [
+        ("category_names", "TEXT"),
+        ("lat", "REAL"),
+        ("lon", "REAL"),
+        ("website_url", "TEXT"),
+        ("voice_reminders_enabled", "INTEGER DEFAULT 1")
+    ]:
         try:
             cursor.execute(f"ALTER TABLE shop_settings ADD COLUMN {col} {col_type}")
         except Exception:
@@ -212,7 +235,12 @@ def init_db():
     INSERT OR IGNORE INTO scheduler_configs (config_key, config_value, description)
     VALUES
         ('reminder_timeout_seconds', '300', 'Time in seconds after creation to send reminder push'),
-        ('expiration_timeout_seconds', '600', 'Time in seconds after creation to expire inquiry')
+        ('expiration_timeout_seconds', '600', 'Time in seconds after creation to expire inquiry'),
+        ('voice_reminder_eval_window_minutes', '1440', 'Evaluation window in minutes for unanswered inquiries'),
+        ('voice_reminder_min_eligible', '10', 'Minimum inquiries in window to qualify for voice reminder'),
+        ('voice_reminder_min_unanswered', '6', 'Minimum unanswered inquiries in window to trigger reminder'),
+        ('voice_reminder_min_unanswered_rate', '0.6', 'Minimum ratio of unanswered inquiries (0.6 = 60%)'),
+        ('voice_reminder_cooldown_minutes', '1440', 'Minimum minutes between reminder calls to the same store')
     """)
 
     # Seed shops from dataset if table has fewer than 10 rows

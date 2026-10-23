@@ -20,7 +20,7 @@ def get_shop_profile(seller: SellerDto = Depends(get_current_seller)):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT shop_id, shop_name, address, phone, is_open, open_time, close_time, accept_inquiries, holiday_mode
+    SELECT shop_id, shop_name, address, phone, is_open, open_time, close_time, accept_inquiries, holiday_mode, voice_reminders_enabled
     FROM shop_settings
     WHERE shop_id = ?
     """, (seller.shop_id,))
@@ -29,8 +29,8 @@ def get_shop_profile(seller: SellerDto = Depends(get_current_seller)):
     if not row:
         # Create default shop settings if not yet existing
         cursor.execute("""
-        INSERT INTO shop_settings (shop_id, shop_name, address, phone, is_open)
-        VALUES (?, 'فروشگاه من', 'تهران، خیابان ولیعصر', ?, 1)
+        INSERT INTO shop_settings (shop_id, shop_name, address, phone, is_open, voice_reminders_enabled)
+        VALUES (?, 'فروشگاه من', 'تهران، خیابان ولیعصر', ?, 1, 1)
         """, (seller.shop_id, seller.phone_number))
         conn.commit()
         cursor.execute("SELECT * FROM shop_settings WHERE shop_id = ?", (seller.shop_id,))
@@ -42,6 +42,7 @@ def get_shop_profile(seller: SellerDto = Depends(get_current_seller)):
     holiday_mode = bool(row["holiday_mode"])
     open_time = row["open_time"] or "09:00"
     close_time = row["close_time"] or "21:00"
+    voice_enabled = bool(row["voice_reminders_enabled"] if "voice_reminders_enabled" in row.keys() and row["voice_reminders_enabled"] is not None else 1)
 
     effective_open, within_hours, status_msg = is_shop_effectively_open(
         is_open_setting=is_open_setting,
@@ -62,7 +63,8 @@ def get_shop_profile(seller: SellerDto = Depends(get_current_seller)):
         holiday_mode=holiday_mode,
         manual_is_open=is_open_setting,
         is_within_working_hours=within_hours,
-        status_message=status_msg
+        status_message=status_msg,
+        voice_reminders_enabled=voice_enabled
     )
 
 @router.put("", response_model=ShopDto)
@@ -130,6 +132,9 @@ def update_shop_profile(payload: ShopUpdateDto, seller: SellerDto = Depends(get_
     if payload.holiday_mode is not None:
         updates.append("holiday_mode = ?")
         params.append(1 if payload.holiday_mode else 0)
+    if payload.voice_reminders_enabled is not None:
+        updates.append("voice_reminders_enabled = ?")
+        params.append(1 if payload.voice_reminders_enabled else 0)
 
     if updates:
         updates.append("updated_at = CURRENT_TIMESTAMP")

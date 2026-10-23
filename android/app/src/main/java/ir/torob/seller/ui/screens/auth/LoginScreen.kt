@@ -105,7 +105,7 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = "برای ورود به حساب کاربری، شماره موبایل خود را وارد کنید.",
+                        text = "برای ورود به حساب کاربری، شماره همراه یا تلفن ثابت فروشگاه را وارد کنید.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -117,8 +117,8 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = state.phoneNumber,
                         onValueChange = viewModel::onPhoneChanged,
-                        label = { Text("شماره موبایل فروشگاه") },
-                        placeholder = { Text("۰۹۱۳۴۲۵۷۸۱۵", color = MaterialTheme.colorScheme.outline) },
+                        label = { Text("شماره همراه یا تلفن ثابت فروشگاه") },
+                        placeholder = { Text("۰۹۱۳۴۲۵۷۸۱۵ یا ۰۲۱۷۶۵۵۷۶۲۴", color = MaterialTheme.colorScheme.outline) },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.PhoneAndroid,
@@ -173,7 +173,7 @@ fun LoginScreen(
                             CircularProgressIndicator(color = PureWhite, modifier = Modifier.size(22.dp))
                         } else {
                             Text(
-                                text = "دریافت کد تایید پیامکی",
+                                text = "دریافت کد تایید",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = PureWhite

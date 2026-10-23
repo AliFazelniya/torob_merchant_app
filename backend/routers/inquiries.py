@@ -27,6 +27,10 @@ def _format_inquiry_row(row) -> InquiryDto:
 
     remaining_seconds = max(0, int((expires_dt - now).total_seconds()))
 
+    status = row["status"]
+    if status == "ACTIVE" and remaining_seconds <= 0:
+        status = "EXPIRED"
+
     keys = row.keys() if hasattr(row, "keys") else []
 
     return InquiryDto(
@@ -42,7 +46,7 @@ def _format_inquiry_row(row) -> InquiryDto:
         customer_phone=row["customer_phone"],
         inquiry_type=row["inquiry_type"],
         user_note=row["user_note"],
-        status=row["status"],
+        status=status,
         created_at=row["created_at"],
         expires_at=row["expires_at"],
         remaining_seconds=remaining_seconds,
@@ -59,6 +63,15 @@ def list_inquiries(
 ):
     conn = get_db()
     cursor = conn.cursor()
+
+    # Auto-expire any past-due active inquiries on-the-fly
+    now_iso = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("""
+    UPDATE inquiries
+    SET status = 'EXPIRED'
+    WHERE status = 'ACTIVE' AND datetime(expires_at) <= datetime(?)
+    """, (now_iso,))
+    conn.commit()
 
     if status:
         if status.upper() == "HISTORY":
