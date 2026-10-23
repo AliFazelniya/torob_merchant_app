@@ -51,7 +51,7 @@ fun BottomNavigationBar(
     }
 
     NavigationBar(
-        containerColor = TorobSurface,
+        containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 8.dp
     ) {
         items.forEach { item ->
@@ -109,9 +109,9 @@ fun BottomNavigationBar(
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = TorobRed,
                     selectedTextColor = TorobRed,
-                    indicatorColor = TorobRedLight,
-                    unselectedIconColor = TorobTextSecondary,
-                    unselectedTextColor = TorobTextSecondary
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
         }

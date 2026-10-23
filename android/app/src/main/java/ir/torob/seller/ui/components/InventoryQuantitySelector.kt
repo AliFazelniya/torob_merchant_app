@@ -33,8 +33,8 @@ fun InventoryQuantitySelector(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        color = if (enabled) TorobSurface else TorobBackground,
-        border = BorderStroke(1.dp, TorobDivider)
+        color = if (enabled) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Row(
             modifier = Modifier
@@ -51,22 +51,22 @@ fun InventoryQuantitySelector(
                 Icon(
                     imageVector = Icons.Default.Inventory,
                     contentDescription = null,
-                    tint = if (enabled) TorobRed else TorobTextSecondary,
+                    tint = if (enabled) TorobRed else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
                     text = "تعداد موجودی",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (enabled) TorobTextPrimary else TorobTextSecondary
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             // Left Side: Modern Touch-Friendly Segmented Counter
             Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = TorobSurface,
-                border = BorderStroke(1.dp, TorobDivider)
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -81,14 +81,14 @@ fun InventoryQuantitySelector(
                                 onClick = { onQuantityChange(quantity - 1) }
                             )
                             .background(
-                                if (enabled && quantity > minQuantity) TorobRedLight else TorobBackground
+                                if (enabled && quantity > minQuantity) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Remove,
                             contentDescription = "کاهش تعداد",
-                            tint = if (enabled && quantity > minQuantity) TorobRed else TorobTextSecondary,
+                            tint = if (enabled && quantity > minQuantity) TorobRed else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -96,7 +96,7 @@ fun InventoryQuantitySelector(
                     VerticalDivider(
                         modifier = Modifier.height(24.dp),
                         thickness = 1.dp,
-                        color = TorobDivider
+                        color = MaterialTheme.colorScheme.outline
                     )
 
                     // Quantity Value Display
@@ -110,14 +110,14 @@ fun InventoryQuantitySelector(
                             text = "${PersianFormatters.toPersianDigits(quantity)} عدد",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (enabled) TorobTextPrimary else TorobTextSecondary
+                            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     VerticalDivider(
                         modifier = Modifier.height(24.dp),
                         thickness = 1.dp,
-                        color = TorobDivider
+                        color = MaterialTheme.colorScheme.outline
                     )
 
                     // Increment Button (+)
@@ -130,14 +130,14 @@ fun InventoryQuantitySelector(
                                 onClick = { onQuantityChange(quantity + 1) }
                             )
                             .background(
-                                if (enabled && quantity < maxQuantity) TorobRedLight else TorobBackground
+                                if (enabled && quantity < maxQuantity) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "افزایش تعداد",
-                            tint = if (enabled && quantity < maxQuantity) TorobRed else TorobTextSecondary,
+                            tint = if (enabled && quantity < maxQuantity) TorobRed else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                     }

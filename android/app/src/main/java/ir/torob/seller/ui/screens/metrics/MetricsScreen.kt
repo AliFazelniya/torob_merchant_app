@@ -42,12 +42,12 @@ fun MetricsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TorobBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Top App Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = TorobSurface,
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 1.dp
         ) {
             Row(
@@ -62,21 +62,21 @@ fun MetricsScreen(
                         text = "عملکرد و شاخص‌های فروشگاه",
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Black,
-                        color = TorobTextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "پایش نرخ پاسخ‌گویی و سرعت ثبت قیمت در ترب",
                         fontSize = 11.sp,
-                        color = TorobTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 FilledTonalButton(
                     onClick = viewModel::loadMetrics,
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = TorobBackground,
-                        contentColor = TorobTextPrimary
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(10.dp)
@@ -122,7 +122,7 @@ fun MetricsScreen(
                 // Hero Score Card
                 HeroScoreCard(metrics = metrics)
 
-                // 2x2 Metric Grid
+                // 2x2 Metric Grid - Unified Single Color Scheme
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -132,8 +132,6 @@ fun MetricsScreen(
                         value = "${PersianFormatters.toPersianDigits(metrics.responseRatePercent.toInt())}٪",
                         subtitle = "هدف سیستم: بالای ۸۵٪",
                         icon = Icons.AutoMirrored.Filled.TrendingUp,
-                        accentColor = if (metrics.responseRatePercent >= 85f) TorobSuccess else TorobWarning,
-                        bgColor = if (metrics.responseRatePercent >= 85f) TorobSuccessLight else TorobWarningLight,
                         modifier = Modifier.weight(1f)
                     )
                     ModernMetricCard(
@@ -141,8 +139,6 @@ fun MetricsScreen(
                         value = PersianFormatters.toPersianDigits(metrics.averageResponseTimeFormatted),
                         subtitle = "هدف سیستم: زیر ۵ دقیقه",
                         icon = Icons.Default.AccessTime,
-                        accentColor = TorobInfo,
-                        bgColor = TorobInfoLight,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -156,8 +152,6 @@ fun MetricsScreen(
                         value = PersianFormatters.toPersianDigits(metrics.totalInquiries),
                         subtitle = "از خریداران ترب",
                         icon = Icons.Default.HourglassEmpty,
-                        accentColor = TorobTextPrimary,
-                        bgColor = TorobBackground,
                         modifier = Modifier.weight(1f)
                     )
                     ModernMetricCard(
@@ -165,8 +159,6 @@ fun MetricsScreen(
                         value = PersianFormatters.toPersianDigits(metrics.answeredInquiries),
                         subtitle = "موفق و در مهلت قانونی",
                         icon = Icons.Default.CheckCircle,
-                        accentColor = TorobSuccess,
-                        bgColor = TorobSuccessLight,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -178,9 +170,9 @@ fun MetricsScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, TorobDivider, RoundedCornerShape(16.dp)),
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = TorobSurface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -206,7 +198,7 @@ fun MetricsScreen(
                                 text = "راهنمای ارتقای رتبه فروشگاه در ترب",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = TorobTextPrimary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
 
@@ -215,7 +207,7 @@ fun MetricsScreen(
                         Text(
                             text = "• سرعت پاسخ‌گویی زیر ۵ دقیقه: فروشگاه شما در اولویت نمایش پیشنهادات ویژه ترب قرار می‌گیرد.\n• نرخ پاسخ بالای ۸۵٪: به عنوان فروشنده برتر و مطمئن به خریداران معرفی می‌شوید.\n• استعلام‌های منقضی‌شده: در صورت عدم ثبت قیمت ظرف ۱۰ دقیقه، استعلام به فروشگاه بعدی ارسال می‌شود.",
                             fontSize = 12.sp,
-                            color = TorobTextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 21.sp
                         )
                     }
@@ -252,9 +244,9 @@ private fun HeroScoreCard(metrics: MetricsDto) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, TorobDivider, RoundedCornerShape(16.dp)),
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = TorobSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -267,7 +259,7 @@ private fun HeroScoreCard(metrics: MetricsDto) {
                     text = "شاخص کلی عملکرد فروشگاه",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TorobTextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Surface(
@@ -294,7 +286,7 @@ private fun HeroScoreCard(metrics: MetricsDto) {
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp)),
                 color = badgeColor,
-                trackColor = TorobBackground
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -307,12 +299,12 @@ private fun HeroScoreCard(metrics: MetricsDto) {
                     text = "نرخ پاسخ‌گویی: ${PersianFormatters.toPersianDigits(rate.toInt())}٪",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TorobTextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "زمان پاسخ: ${PersianFormatters.toPersianDigits(metrics.averageResponseTimeFormatted)}",
                     fontSize = 12.sp,
-                    color = TorobTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -325,15 +317,13 @@ private fun ModernMetricCard(
     value: String,
     subtitle: String,
     icon: ImageVector,
-    accentColor: Color,
-    bgColor: Color,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
-            .border(1.dp, TorobDivider, RoundedCornerShape(16.dp)),
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = TorobSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Column(
@@ -348,7 +338,7 @@ private fun ModernMetricCard(
                 Text(
                     text = title,
                     fontSize = 11.sp,
-                    color = TorobTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1
                 )
@@ -357,13 +347,13 @@ private fun ModernMetricCard(
                     modifier = Modifier
                         .size(26.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(bgColor),
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = accentColor,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(15.dp)
                     )
                 }
@@ -373,13 +363,13 @@ private fun ModernMetricCard(
                 text = value,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Black,
-                color = accentColor
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Text(
                 text = subtitle,
                 fontSize = 10.sp,
-                color = TorobTextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
             )
         }
@@ -396,9 +386,9 @@ private fun RatioBreakdownCard(metrics: MetricsDto) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, TorobDivider, RoundedCornerShape(16.dp)),
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = TorobSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -406,7 +396,7 @@ private fun RatioBreakdownCard(metrics: MetricsDto) {
                 text = "توزیع وضعیت استعلام‌ها",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = TorobTextPrimary
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(12.dp))

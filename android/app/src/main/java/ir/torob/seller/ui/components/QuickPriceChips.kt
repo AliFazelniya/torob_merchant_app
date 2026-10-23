@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -22,7 +23,7 @@ fun QuickPriceChips(
         Text(
             text = "تغییر سریع قیمت با یک لمس:",
             fontSize = 12.sp,
-            color = TorobTextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(bottom = 6.dp)
         )
@@ -31,50 +32,58 @@ fun QuickPriceChips(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            SuggestionChip(
+            QuickPriceChipItem(
+                label = "قیمت مرجع",
                 onClick = { onPriceSelected(recordedPrice) },
-                label = { Text("قیمت مرجع", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = TorobBackground,
-                    labelColor = TorobRed
-                ),
-                border = BorderStroke(1.dp, TorobDivider),
-                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.weight(1f)
             )
-            SuggestionChip(
+            QuickPriceChipItem(
+                label = "۵۰- هزار",
                 onClick = { onPriceSelected(maxOf(0L, currentPrice - 50_000)) },
-                label = { Text("۵۰- هزار", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = TorobBackground,
-                    labelColor = TorobError
-                ),
-                border = BorderStroke(1.dp, TorobDivider),
-                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.weight(1f)
             )
-            SuggestionChip(
+            QuickPriceChipItem(
+                label = "۵۰+ هزار",
                 onClick = { onPriceSelected(currentPrice + 50_000) },
-                label = { Text("۵۰+ هزار", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = TorobBackground,
-                    labelColor = TorobSuccess
-                ),
-                border = BorderStroke(1.dp, TorobDivider),
-                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.weight(1f)
             )
-            SuggestionChip(
+            QuickPriceChipItem(
+                label = "۱۰۰+ هزار",
                 onClick = { onPriceSelected(currentPrice + 100_000) },
-                label = { Text("۱۰۰+ هزار", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = TorobBackground,
-                    labelColor = TorobSuccess
-                ),
-                border = BorderStroke(1.dp, TorobDivider),
-                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.weight(1f)
             )
         }
     }
 }
+
+@Composable
+private fun QuickPriceChipItem(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        modifier = modifier.height(36.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+    }
+}
+

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -63,8 +64,8 @@ fun InquirySummaryCards(
             title = "مهلت عادی",
             count = (activeCount - urgentCount).coerceAtLeast(0),
             icon = Icons.Default.HourglassTop,
-            accentColor = Slate700,
-            bgColor = Slate100,
+            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            bgColor = MaterialTheme.colorScheme.surfaceVariant,
             isSelected = selectedFilter == "NORMAL",
             onClick = { onFilterSelected("NORMAL") },
             modifier = Modifier.weight(1f)
@@ -86,7 +87,7 @@ private fun SummaryCardItem(
     val borderModifier = if (isSelected) {
         Modifier.border(1.5.dp, accentColor, RoundedCornerShape(12.dp))
     } else {
-        Modifier.border(1.dp, BorderSubtle, RoundedCornerShape(12.dp))
+        Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
     }
 
     Card(
@@ -95,7 +96,7 @@ private fun SummaryCardItem(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) PureWhite else PureWhite
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 2.dp else 0.dp)
     ) {
@@ -134,7 +135,7 @@ private fun SummaryCardItem(
             Text(
                 text = title,
                 fontSize = 11.sp,
-                color = if (isSelected) TextPrimary else TextSecondary,
+                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                 maxLines = 1
             )

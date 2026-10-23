@@ -70,7 +70,7 @@ fun InquiriesListScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TorobBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Connection & Offline Banner
         ConnectionStatusBar(isOnline = isOnline, pendingSyncCount = pendingSyncCount)
@@ -78,7 +78,7 @@ fun InquiriesListScreen(
         // Modern Top App Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = TorobSurface,
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 1.dp
         ) {
             Row(
@@ -93,17 +93,17 @@ fun InquiriesListScreen(
                         text = "استعلام‌های فعال",
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Black,
-                        color = TorobTextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     if (activeInquiries.isNotEmpty()) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = TorobRedLight
+                            color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Text(
                                 text = "${PersianFormatters.toPersianDigits(activeInquiries.size)} مورد",
-                                color = TorobRed,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -115,8 +115,8 @@ fun InquiriesListScreen(
                 FilledTonalButton(
                     onClick = viewModel::refresh,
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = TorobBackground,
-                        contentColor = TorobTextPrimary
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(10.dp)
@@ -256,11 +256,11 @@ private fun ModernInquiryCard(
             .clickable(onClick = onClick)
             .border(
                 width = if (isUrgent) 1.5.dp else 1.dp,
-                color = if (isUrgent) TorobWarning else TorobDivider,
+                color = if (isUrgent) TorobWarning else MaterialTheme.colorScheme.outline,
                 shape = RoundedCornerShape(16.dp)
             ),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = TorobSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -274,7 +274,7 @@ private fun ModernInquiryCard(
                     text = "کد رهگیری: ${inquiry.trackingCode}",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TorobTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 InquiryStatusBadge(
@@ -307,7 +307,7 @@ private fun ModernInquiryCard(
                         text = inquiry.productTitle,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TorobTextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         lineHeight = 20.sp
@@ -320,13 +320,13 @@ private fun ModernInquiryCard(
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = TorobTextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(13.dp)
                         )
                         Text(
                             text = "خریدار: ${inquiry.customerName}",
                             fontSize = 11.sp,
-                            color = TorobTextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -338,13 +338,13 @@ private fun ModernInquiryCard(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
-                    color = TorobBackground,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, TorobDivider)
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Text(
                         text = "سوال خریدار: «${inquiry.userNote}»",
                         fontSize = 11.sp,
-                        color = TorobTextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
@@ -353,7 +353,7 @@ private fun ModernInquiryCard(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = TorobDivider, thickness = 0.8.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.8.dp)
             Spacer(modifier = Modifier.height(10.dp))
 
             // Bottom Action Row: Reference Price + Big Response Button
@@ -366,13 +366,13 @@ private fun ModernInquiryCard(
                     Text(
                         text = "قیمت مرجع در سایت",
                         fontSize = 10.sp,
-                        color = TorobTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = PersianFormatters.formatPriceToman(inquiry.recordedPriceToman),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TorobTextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -388,13 +388,13 @@ private fun ModernInquiryCard(
                         text = "ثبت پاسخ",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TorobSurface
+                        color = PureWhite
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         imageVector = Icons.Default.ChevronLeft,
                         contentDescription = null,
-                        tint = TorobSurface,
+                        tint = PureWhite,
                         modifier = Modifier.size(16.dp)
                     )
                 }

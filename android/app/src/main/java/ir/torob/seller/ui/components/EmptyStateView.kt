@@ -59,7 +59,7 @@ fun EmptyStateView(
                 text = title,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = TorobTextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
 
@@ -68,7 +68,7 @@ fun EmptyStateView(
             Text(
                 text = description,
                 fontSize = 12.sp,
-                color = TorobTextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 lineHeight = 19.sp,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -86,7 +86,7 @@ fun EmptyStateView(
                         text = actionButtonText,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TorobSurface
+                        color = PureWhite
                     )
                 }
             }

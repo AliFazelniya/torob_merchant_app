@@ -16,6 +16,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
+import androidx.compose.material3.MaterialTheme
 import ir.torob.seller.ui.theme.*
 
 @Composable
@@ -30,8 +31,8 @@ fun ProductThumbnail(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(cornerRadius))
-            .background(TorobBackground)
-            .border(1.dp, TorobDivider, RoundedCornerShape(cornerRadius)),
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(cornerRadius)),
         contentAlignment = Alignment.Center
     ) {
         if (!imageUrl.isNullOrBlank()) {
@@ -54,7 +55,7 @@ fun ProductThumbnail(
                         Icon(
                             imageVector = Icons.Default.ShoppingBag,
                             contentDescription = null,
-                            tint = TorobTextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(size / 2)
                         )
                     }
@@ -64,7 +65,7 @@ fun ProductThumbnail(
             Icon(
                 imageVector = Icons.Default.ShoppingBag,
                 contentDescription = null,
-                tint = TorobTextSecondary,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(size / 2)
             )
         }

@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,12 +44,23 @@ fun InquiryDetailScreen(
     isOnline: Boolean,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+
     LaunchedEffect(inquiryId) {
         viewModel.loadInquiryDetail(inquiryId)
     }
 
     val state by viewModel.detailUiState.collectAsState()
     val inquiry = state.inquiry
+
+    // Handle instant exit and confirmation popup upon successful submission
+    LaunchedEffect(state.submissionSuccess) {
+        if (state.submissionSuccess) {
+            Toast.makeText(context, "پاسخ به استعلام با موفقیت ارسال شد", Toast.LENGTH_SHORT).show()
+            viewModel.clearSubmissionSuccess()
+            onBack()
+        }
+    }
 
     var liveRemainingSeconds by remember(inquiry?.inquiryId, inquiry?.remainingSeconds) {
         mutableLongStateOf(inquiry?.remainingSeconds ?: 0L)
@@ -75,7 +88,7 @@ fun InquiryDetailScreen(
         topBar = {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = TorobSurface,
+                color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 1.dp
             ) {
                 Row(
@@ -88,7 +101,7 @@ fun InquiryDetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "بازگشت",
-                            tint = TorobTextPrimary
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -97,13 +110,13 @@ fun InquiryDetailScreen(
                             text = "ثبت پاسخ به استعلام",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TorobTextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         if (inquiry != null) {
                             Text(
                                 text = "کد رهگیری: ${inquiry.trackingCode}",
                                 fontSize = 11.sp,
-                                color = TorobTextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -122,9 +135,9 @@ fun InquiryDetailScreen(
             if (inquiry != null && inquiry.status == "ACTIVE" && !isExpired) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = TorobSurface,
+                    color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 8.dp,
-                    border = BorderStroke(1.dp, TorobDivider)
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Box(
                         modifier = Modifier
@@ -178,7 +191,7 @@ fun InquiryDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(TorobBackground)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
         ) {
             ConnectionStatusBar(isOnline = isOnline)
@@ -204,9 +217,9 @@ fun InquiryDetailScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, TorobDivider, RoundedCornerShape(16.dp)),
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = TorobSurface),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -230,7 +243,7 @@ fun InquiryDetailScreen(
                                         text = inquiry.productTitle,
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = TorobTextPrimary,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         lineHeight = 22.sp
                                     )
 
@@ -238,20 +251,20 @@ fun InquiryDetailScreen(
                                         Text(
                                             text = "دسته‌بندی: ${inquiry.categoryName}",
                                             fontSize = 11.sp,
-                                            color = TorobTextSecondary
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
 
                                     Text(
                                         text = "مشتری: ${inquiry.customerName}",
                                         fontSize = 11.sp,
-                                        color = TorobTextSecondary
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
 
                             Spacer(modifier = Modifier.height(14.dp))
-                            HorizontalDivider(color = TorobDivider, thickness = 0.8.dp)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.8.dp)
                             Spacer(modifier = Modifier.height(12.dp))
 
                             Row(
@@ -262,13 +275,13 @@ fun InquiryDetailScreen(
                                 Text(
                                     text = "قیمت ثبت‌شده مرجع در سایت ترب:",
                                     fontSize = 12.sp,
-                                    color = TorobTextSecondary
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = PersianFormatters.formatPriceToman(inquiry.recordedPriceToman),
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = TorobTextPrimary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
 
@@ -277,8 +290,8 @@ fun InquiryDetailScreen(
                                 Surface(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(10.dp),
-                                    color = TorobBackground,
-                                    border = BorderStroke(1.dp, TorobDivider)
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
                                         Text(
@@ -291,7 +304,7 @@ fun InquiryDetailScreen(
                                         Text(
                                             text = inquiry.userNote,
                                             fontSize = 12.sp,
-                                            color = TorobTextPrimary,
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             lineHeight = 18.sp
                                         )
                                     }
@@ -304,9 +317,9 @@ fun InquiryDetailScreen(
                     if (isExpired) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = TorobBackground),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(1.dp, TorobDivider)
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                         ) {
                             Row(
                                 modifier = Modifier.padding(14.dp),
@@ -316,20 +329,20 @@ fun InquiryDetailScreen(
                                 Icon(
                                     imageVector = Icons.Default.HourglassEmpty,
                                     contentDescription = null,
-                                    tint = TorobTextSecondary,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Column {
                                     Text(
                                         text = "مهلت ۱۰ دقیقه‌ای پاسخ به پایان رسیده است",
-                                        color = TorobTextPrimary,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         text = "به دلیل اتمام زمان، این استعلام به فروشگاه دیگری منتقل گردید.",
-                                        color = TorobTextSecondary,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 11.sp
                                     )
                                 }
@@ -363,7 +376,7 @@ fun InquiryDetailScreen(
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         text = "جزئیات پاسخ شما در بخش «تاریخچه» قابل مشاهده است.",
-                                        color = TorobTextSecondary,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 11.sp
                                     )
                                 }
@@ -374,9 +387,9 @@ fun InquiryDetailScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, TorobDivider, RoundedCornerShape(16.dp)),
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = TorobSurface),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
@@ -384,7 +397,7 @@ fun InquiryDetailScreen(
                                     text = "وضعیت موجودی و پیشنهاد قیمت",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = TorobTextPrimary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(modifier = Modifier.height(14.dp))
 
@@ -487,9 +500,11 @@ fun InquiryDetailScreen(
                                     shape = RoundedCornerShape(12.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = TorobRed,
-                                        unfocusedBorderColor = TorobDivider,
-                                        focusedContainerColor = TorobSurface,
-                                        unfocusedContainerColor = TorobSurface
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                                     )
                                 )
 
@@ -531,11 +546,11 @@ private fun StockOptionCard(
             .clickable(onClick = onClick)
             .border(
                 width = if (isSelected) 1.5.dp else 1.dp,
-                color = if (isSelected) activeColor else TorobDivider,
+                color = if (isSelected) activeColor else MaterialTheme.colorScheme.outline,
                 shape = RoundedCornerShape(12.dp)
             ),
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) activeBg.copy(alpha = 0.4f) else TorobSurface
+        color = if (isSelected) activeBg.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
@@ -546,13 +561,13 @@ private fun StockOptionCard(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (isSelected) activeColor else TorobBackground),
+                    .background(if (isSelected) activeColor else MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (isSelected) TorobSurface else TorobTextSecondary,
+                    tint = if (isSelected) TorobSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -562,12 +577,12 @@ private fun StockOptionCard(
                     text = title,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelected) activeColor else TorobTextPrimary
+                    color = if (isSelected) activeColor else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = subtitle,
                     fontSize = 10.sp,
-                    color = TorobTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

@@ -67,7 +67,7 @@ fun NotificationPermissionBanner(
                     text = "فعال‌سازی در تنظیمات گوشی",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TorobSurface
+                    color = PureWhite
                 )
             }
         }

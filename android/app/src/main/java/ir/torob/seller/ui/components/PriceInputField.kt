@@ -54,7 +54,7 @@ fun PriceInputField(
             trailingIcon = {
                 Text(
                     text = "تومان",
-                    color = if (enabled) TorobRed else TorobTextSecondary,
+                    color = if (enabled) TorobRed else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(end = 12.dp)
@@ -64,12 +64,14 @@ fun PriceInputField(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = TorobRed,
-                unfocusedBorderColor = TorobDivider,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                 focusedLabelColor = TorobRed,
-                unfocusedLabelColor = TorobTextSecondary,
-                focusedContainerColor = TorobSurface,
-                unfocusedContainerColor = TorobSurface,
-                disabledContainerColor = TorobBackground
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             ),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
@@ -100,7 +102,7 @@ fun PriceInputField(
             } else {
                 Text(
                     text = "قیمت را به تومان وارد نمایید",
-                    color = TorobTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp
                 )
             }

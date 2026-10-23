@@ -165,4 +165,8 @@ class InquiryViewModel(private val repository: InquiryRepository) : ViewModel() 
             }
         }
     }
+
+    fun clearSubmissionSuccess() {
+        _detailUiState.value = _detailUiState.value.copy(submissionSuccess = false)
+    }
 }

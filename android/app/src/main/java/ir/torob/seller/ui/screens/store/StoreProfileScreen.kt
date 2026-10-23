@@ -2,6 +2,7 @@ package ir.torob.seller.ui.screens.store
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,11 +45,11 @@ fun StoreProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Slate50)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = PureWhite,
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 1.dp
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -56,12 +57,12 @@ fun StoreProfileScreen(
                     text = "اطلاعات و وضعیت فروشگاه",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
-                    color = Slate900
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "تنظیم باز/بسته بودن فروشگاه و ساعات کاری",
                     fontSize = 11.sp,
-                    color = Slate500
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -80,9 +81,11 @@ fun StoreProfileScreen(
             ) {
                 // Store Operating Scenario Selector Card
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = PureWhite),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -90,13 +93,13 @@ fun StoreProfileScreen(
                             text = "وضعیت فعالیت فروشگاه در ترب",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Slate900
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "یکی از سناریوهای زیر را برای وضعیت فروشگاه و دریافت استعلام انتخاب کنید:",
                             fontSize = 11.sp,
-                            color = Slate500
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         Spacer(modifier = Modifier.height(14.dp))
@@ -337,9 +340,11 @@ fun StoreProfileScreen(
 
                 // Locked General Store Info Card
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = PureWhite),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(
@@ -355,12 +360,12 @@ fun StoreProfileScreen(
                                 text = "مشخصات عمومی فروشگاه",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Slate900
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
-                                color = Slate100,
-                                border = BorderStroke(1.dp, Slate300)
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -370,14 +375,14 @@ fun StoreProfileScreen(
                                     Icon(
                                         imageVector = Icons.Default.Lock,
                                         contentDescription = null,
-                                        tint = Slate600,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Text(
                                         text = "قفل شده امنیتی",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Slate700
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -386,7 +391,7 @@ fun StoreProfileScreen(
                         Text(
                             text = "به منظور حفظ امنیت و اصالت داده‌ها، تغییر نام، تلفن، آدرس و ساعات کاری صرفاً از طریق تایید پشتیبانی ترب امکان‌پذیر است.",
                             fontSize = 11.sp,
-                            color = Slate500,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 16.sp
                         )
 
@@ -396,13 +401,15 @@ fun StoreProfileScreen(
                             readOnly = true,
                             label = { Text("نام فروشگاه") },
                             trailingIcon = {
-                                Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                             },
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Slate300,
-                                unfocusedBorderColor = Slate200,
-                                focusedContainerColor = Slate50.copy(alpha = 0.6f),
-                                unfocusedContainerColor = Slate50.copy(alpha = 0.6f)
+                                focusedBorderColor = MaterialTheme.colorScheme.outline,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                             ),
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
@@ -414,13 +421,15 @@ fun StoreProfileScreen(
                             readOnly = true,
                             label = { Text("تلفن تماس فروشگاه") },
                             trailingIcon = {
-                                Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                             },
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Slate300,
-                                unfocusedBorderColor = Slate200,
-                                focusedContainerColor = Slate50.copy(alpha = 0.6f),
-                                unfocusedContainerColor = Slate50.copy(alpha = 0.6f)
+                                focusedBorderColor = MaterialTheme.colorScheme.outline,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                             ),
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
@@ -432,13 +441,15 @@ fun StoreProfileScreen(
                             readOnly = true,
                             label = { Text("آدرس دقیق فروشگاه در تهران") },
                             trailingIcon = {
-                                Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                             },
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Slate300,
-                                unfocusedBorderColor = Slate200,
-                                focusedContainerColor = Slate50.copy(alpha = 0.6f),
-                                unfocusedContainerColor = Slate50.copy(alpha = 0.6f)
+                                focusedBorderColor = MaterialTheme.colorScheme.outline,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                             ),
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 2,
@@ -455,13 +466,15 @@ fun StoreProfileScreen(
                                 readOnly = true,
                                 label = { Text("ساعت بازگشایی (HH:MM)") },
                                 trailingIcon = {
-                                    Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                                 },
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Slate300,
-                                    unfocusedBorderColor = Slate200,
-                                    focusedContainerColor = Slate50.copy(alpha = 0.6f),
-                                    unfocusedContainerColor = Slate50.copy(alpha = 0.6f)
+                                    focusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                                 ),
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp)
@@ -472,13 +485,15 @@ fun StoreProfileScreen(
                                 readOnly = true,
                                 label = { Text("ساعت پایان کار (HH:MM)") },
                                 trailingIcon = {
-                                    Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                                 },
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Slate300,
-                                    unfocusedBorderColor = Slate200,
-                                    focusedContainerColor = Slate50.copy(alpha = 0.6f),
-                                    unfocusedContainerColor = Slate50.copy(alpha = 0.6f)
+                                    focusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                                 ),
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp)
@@ -675,10 +690,10 @@ private fun ScenarioOptionCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) accentColor.copy(alpha = 0.08f) else Slate100.copy(alpha = 0.6f),
+        color = if (isSelected) accentColor.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant,
         border = BorderStroke(
             width = if (isSelected) 1.5.dp else 1.dp,
-            color = if (isSelected) accentColor else Slate200
+            color = if (isSelected) accentColor else MaterialTheme.colorScheme.outline
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -691,7 +706,7 @@ private fun ScenarioOptionCard(
                 onClick = onClick,
                 colors = RadioButtonDefaults.colors(
                     selectedColor = accentColor,
-                    unselectedColor = Slate500
+                    unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
             Spacer(modifier = Modifier.width(10.dp))
@@ -700,13 +715,13 @@ private fun ScenarioOptionCard(
                     text = title,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelected) Slate900 else Slate700
+                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
                     fontSize = 11.sp,
-                    color = Slate500,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
                 )
             }

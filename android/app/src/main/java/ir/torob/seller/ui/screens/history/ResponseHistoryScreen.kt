@@ -75,14 +75,14 @@ fun ResponseHistoryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TorobBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         ConnectionStatusBar(isOnline = isOnline)
 
         // Top App Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = TorobSurface,
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 1.dp
         ) {
             Row(
@@ -97,21 +97,21 @@ fun ResponseHistoryScreen(
                         text = "تاریخچه استعلام‌ها",
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Black,
-                        color = TorobTextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "آرشیو استعلام‌های پاسخ‌داده‌شده و منقضی‌شده",
                         fontSize = 11.sp,
-                        color = TorobTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 FilledTonalButton(
                     onClick = viewModel::refresh,
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = TorobBackground,
-                        contentColor = TorobTextPrimary
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(10.dp)
@@ -134,7 +134,7 @@ fun ResponseHistoryScreen(
         // Live Search Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = TorobSurface,
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 0.5.dp
         ) {
             Box(
@@ -149,14 +149,14 @@ fun ResponseHistoryScreen(
                         Text(
                             text = "جستجو در نام کالا، کد رهگیری یا نام خریدار...",
                             fontSize = 12.sp,
-                            color = TorobTextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "جستجو",
-                            tint = TorobTextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                     },
@@ -166,7 +166,7 @@ fun ResponseHistoryScreen(
                                 Icon(
                                     imageVector = Icons.Default.Clear,
                                     contentDescription = "پاک کردن",
-                                    tint = TorobTextSecondary,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -178,9 +178,11 @@ fun ResponseHistoryScreen(
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = TorobRed,
-                        unfocusedBorderColor = TorobDivider,
-                        focusedContainerColor = TorobBackground,
-                        unfocusedContainerColor = TorobBackground
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -190,7 +192,7 @@ fun ResponseHistoryScreen(
         // Filter Tabs
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = TorobSurface,
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 0.5.dp
         ) {
             Row(
@@ -286,8 +288,8 @@ private fun ModernFilterChip(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(10.dp),
-        color = if (isSelected) TorobRed else TorobBackground,
-        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, TorobDivider)
+        color = if (isSelected) TorobRed else MaterialTheme.colorScheme.surfaceVariant,
+        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
@@ -295,7 +297,7 @@ private fun ModernFilterChip(
         ) {
             Text(
                 text = title,
-                color = if (isSelected) TorobSurface else TorobTextSecondary,
+                color = if (isSelected) PureWhite else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
             )
@@ -312,9 +314,9 @@ private fun ModernHistoryCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .border(1.dp, TorobDivider, RoundedCornerShape(16.dp)),
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = TorobSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -328,7 +330,7 @@ private fun ModernHistoryCard(
                     text = "کد رهگیری: ${inquiry.trackingCode}",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TorobTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 InquiryStatusBadge(status = inquiry.status)
@@ -357,7 +359,7 @@ private fun ModernHistoryCard(
                         text = inquiry.productTitle,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TorobTextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -369,20 +371,20 @@ private fun ModernHistoryCard(
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = TorobTextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(13.dp)
                         )
                         Text(
                             text = "خریدار: ${inquiry.customerName}",
                             fontSize = 11.sp,
-                            color = TorobTextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
-            HorizontalDivider(color = TorobDivider, thickness = 0.8.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.8.dp)
             Spacer(modifier = Modifier.height(8.dp))
 
             // Price Details
@@ -395,7 +397,7 @@ private fun ModernHistoryCard(
                     text = "قیمت مرجع: ${PersianFormatters.formatPriceToman(inquiry.recordedPriceToman)}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TorobTextPrimary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Text(
@@ -411,7 +413,7 @@ private fun ModernHistoryCard(
                 Text(
                     text = "«${inquiry.userNote}»",
                     fontSize = 11.sp,
-                    color = TorobTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
