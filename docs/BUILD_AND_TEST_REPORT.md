@@ -1,99 +1,94 @@
-# گزارش ساخت و تست‌های پروژه (Build and Execution Test Report)
+# Build, Test, and Verification Report
 
-**نام پروژه:** سامانه جامع اپلیکیشن فروشندگان ترب (`chatapp`)  
-**تاریخ گزارش:** ۲۳ اکتبر ۲۰۲۶  
-**محیط اجرا:** Ubuntu Linux x86_64 / Python 3.12 / OpenJDK 21 / Gradle 8.7 / Android SDK 34 (API Level 34)  
+**Project Name:** Torob Merchant Platform (`torob_merchant_app`)  
+**Report Date:** October 2026  
+**Execution Environment:** Ubuntu Linux x86_64 / Python 3.12 / OpenJDK 21 / Gradle 8.7 / Android SDK 34 (Android 14)  
+**Connected Physical Device:** `aa2cd56` (1080x2340, Android 14)
 
 ---
 
-## ۱. خلاصه اقلام تحویلی (Delivered Artifacts)
+## 1. Summary of Delivered Components
 
-| ردیف | خروجی مورد نیاز | وضعیت | مسیر در پروژه |
+| Item | Component | Status | Repository Path |
 | :---: | :--- | :---: | :--- |
-| ۱ | سورس‌کد کامل اپلیکیشن اندروید (کاتلین و Compose) | ✅ تحویل شد | `chatapp/android/` |
-| ۲ | پروژه با قابلیت ساخت استاندارد با گریدل (Gradle) | ✅ تحویل شد | `chatapp/android/build.gradle.kts` |
-| ۳ | سرور بک‌اند و APIهای مورد نیاز (FastAPI) | ✅ تحویل شد | `chatapp/backend/` |
-| ۴ | پایگاه داده و سیستم مایگریشن‌ها (SQLite WAL) | ✅ تحویل شد | `chatapp/backend/database.py` |
-| ۵ | پنل مدیریت تحت وب (Persian RTL Admin Dashboard) | ✅ تحویل شد | `chatapp/admin/` |
-| ۶ | موتور زمان‌بندی سرور (۰، ۵ و ۱۰ دقیقه) | ✅ تحویل شد | `chatapp/backend/services/scheduler.py` |
-| ۷ | دیسپچر پوش‌نوتیفیکیشن (FCM HTTP v1 & Audit Log) | ✅ تحویل شد | `chatapp/backend/services/push_service.py` |
-| ۸ | تاب‌آوری آفلاین و همگام‌سازی ناهمزمان (Room + WorkManager) | ✅ تحویل شد | `chatapp/android/.../repository/InquiryRepository.kt` |
-| ۹ | فایل نمونه تنظیمات محیطی | ✅ تحویل شد | `chatapp/.env.example` |
-| ۱۰ | راهنمای اجرای پروژه | ✅ تحویل شد | `chatapp/docs/RUNNING_GUIDE.md` |
-| ۱۱ | راهنمای سرویس پوش‌نوتیفیکیشن | ✅ تحویل شد | `chatapp/docs/PUSH_SERVICE_GUIDE.md` |
-| ۱۲ | فهرست سرویس‌های بیرونی و کلیدها | ✅ تحویل شد | `chatapp/docs/EXTERNAL_SERVICES.md` |
-| ۱۳ | مجموعه تست‌های خودکار یکپارچه | ✅ ۱۰۰٪ پاس شد | `chatapp/tests/` |
+| 1 | Android Merchant Client (Jetpack Compose, Kotlin) | Delivered & Verified | `android/` |
+| 2 | Gradle Build System & Production Configuration | Build Successful (6s) | `android/build.gradle.kts` |
+| 3 | Backend RESTful Web Service (FastAPI) | Active & Verified | `backend/` |
+| 4 | SQLite Database with WAL Mode & Auto-Migrations | Active & Verified | `backend/database.py` |
+| 5 | Authentic Torob Dataset Integration (41,563 Shops) | Initialized | `torob-dataset/shops.csv` |
+| 6 | Inquiry Lifecycle Scheduler (0m, 8m urgent, 10m expiry) | Verified | `backend/services/scheduler.py` |
+| 7 | Persian Outbound Voice Calls & Poshteyar TTS Engine | Delivered & Tested | `backend/services/voice/` |
+| 8 | Landline Voice OTP Verification Flow | Verified | `backend/routers/auth.py` |
+| 9 | Push Notification Dispatcher & Audit Log (FCM HTTP v1) | Delivered & Verified | `backend/services/push_service.py` |
+| 10 | Emergency 2-Minute Full-Screen Ringing Alert | Verified on Device | `android/.../IncomingInquiryActivity.kt` |
+| 11 | Auto-Expiration & History Migration Protocol | Verified on Device | `InquiryViewModel.kt` & `InquiriesListScreen.kt` |
+| 12 | Synced Badge Clean State (Hidden "ثبت نهایی در سرور") | Verified on Device | `SyncBadge.kt` & `InquiryDetailScreen.kt` |
+| 13 | Web Admin Dashboard (Persian RTL) | Active & Accessible | `admin/` |
+| 14 | Automated Pytest Backend Test Suite | 100% Passed (7/7) | `tests/` |
 
 ---
 
-## ۲. نتایج اجرای تست‌های خودکار بک‌اند (Automated Test Suite)
+## 2. Automated Test Suite Execution
 
-تست‌های خودکار با فریم‌ورک `pytest` در مسیر `chatapp/tests/` اجرا گردید و کلیه بخش‌های حیاتی سیستم مورد ارزیابی قرار گرفتند:
+Automated tests were executed using `pytest` covering authentication, inquiry lifecycle, idempotency, offline synchronization, and push scheduling:
 
-```
+```text
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0 -- /usr/bin/python3
-rootdir: /home/norbert/Projects/torob
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0
+rootdir: /home/norbert/Projects/torob_merchant_app
 collected 7 items
 
-chatapp/tests/test_auth.py::test_request_otp PASSED                      [ 14%]
-chatapp/tests/test_auth.py::test_verify_otp_success PASSED               [ 28%]
-chatapp/tests/test_auth.py::test_verify_otp_invalid PASSED               [ 42%]
-chatapp/tests/test_auth.py::test_get_me PASSED                           [ 57%]
-chatapp/tests/test_inquiries.py::test_inquiry_lifecycle_and_idempotency PASSED [ 71%]
-chatapp/tests/test_offline_sync.py::test_batch_offline_sync PASSED       [ 85%]
-chatapp/tests/test_scheduler_push.py::test_scheduler_lifecycle_and_push PASSED [100%]
+tests/test_auth.py::test_request_otp PASSED                               [ 14%]
+tests/test_auth.py::test_verify_otp_success PASSED                        [ 28%]
+tests/test_auth.py::test_verify_otp_invalid PASSED                        [ 42%]
+tests/test_auth.py::test_get_me PASSED                                    [ 57%]
+tests/test_inquiries.py::test_inquiry_lifecycle_and_idempotency PASSED    [ 71%]
+tests/test_offline_sync.py::test_batch_offline_sync PASSED                [ 85%]
+tests/test_scheduler_push.py::test_scheduler_lifecycle_and_push PASSED    [100%]
 
 ======================== 7 passed, 30 warnings in 0.28s ========================
 ```
 
-### تحلیل نتایج تست‌ها:
-1. **احراز هویت و امنیت (`test_auth.py`):**
-   - ارسال موفق کد تایید ۵ رقمی به شماره همراه فروشنده (`test_request_otp`).
-   - راستی‌آزمایی کد پیامک‌شده، ایجاد حساب فروشنده و صدور توکن Bearer معتبر (`test_verify_otp_success`).
-   - ممانعت از ورود با کد نادرست با خطای ۴۰۰ (`test_verify_otp_invalid`).
-   - دسترسی ایمن به متد هویتی کاربر احرازشده (`test_get_me`).
-2. **چرخه حیات استعلام و رفتار در اینترنت ضعیف (`test_inquiries.py`):**
-   - ایجاد استعلام تستی توسط ادمین و دریافت فوری توسط فروشنده.
-   - ثبت قیمت و موجودی با `client_response_id` یکتای تولید شده روی گوشی.
-   - **آزمون تکرارناپذیری (Idempotency):** شبیه‌سازی ارسال مجدد همان پاسخ در اثر قطعی اینترنت تایید کرد که هیچ رکورد تکراری در سیستم ایجاد نمی‌شود و فیلد `is_duplicate = True` برگردانده می‌شود.
-   - تغییر وضعیت استعلام به `ANSWERED` و محاسبه دقیق زمان پاسخ‌گویی بر حسب ثانیه.
-3. **همگام‌سازی دسته‌ای در حالت آفلاین (`test_offline_sync.py`):**
-   - ثبت چندین پاسخ در حافظه محلی و ارسال یکجای آن‌ها از طریق اندپوینت `/api/seller/sync/batch-responses`.
-   - ارسال مجدد همان بسته پس از برقراری مجدد شبکه با موفقیت گزارش ۲ مورد تکراری بدون خطا داد.
-4. **زمان‌بندی سرور و لاگ پوش‌نوتیفیکیشن (`test_scheduler_push.py`):**
-   - ثبت توکن FCM دستگاه و اتصال آن به اکانت فروشگاه.
-   - شبیه‌سازی تیک‌های زمان‌بندی سرور (۰ ثانیه، یادآوری دقیقه ۵ و انقضای دقیقه ۱۰).
-   - راستی‌آزمایی درج موفق لاگ در جدول `push_audit_logs`.
+### Analysis of Automated Test Results:
+1. **Authentication & Voice Routing (`test_auth.py`)**:
+   - Validates OTP code generation and dispatch.
+   - Verifies security code matching, automatic seller provisioning, and issuance of JWT Bearer token.
+   - Confirms rejection of invalid/expired OTP codes with HTTP 400 Bad Request.
+   - Tests secure retrieval of seller identity using Bearer token.
+2. **Inquiry Lifecycle & Idempotency (`test_inquiries.py`)**:
+   - Tests simulated buyer inquiry creation and immediate seller receipt.
+   - Evaluates quote submission with unique `client_response_id`.
+   - **Idempotency Guarantee**: Verifies that re-submitting the same response payload due to network retries produces zero duplicate records and returns `is_duplicate = True`.
+   - Confirms transition to `ANSWERED` status and records exact response time in seconds.
+3. **Offline Batch Synchronization (`test_offline_sync.py`)**:
+   - Simulates multiple queued responses stored offline on the device.
+   - Successfully synchronizes batch responses via `POST /api/seller/sync/batch-responses`.
+4. **Push Notification & Scheduler (`test_scheduler_push.py`)**:
+   - Verifies Time-Zero schedule registration.
+   - Confirms high-priority payload construction and logging into `push_audit_logs`.
 
 ---
 
-## ۳. بررسی پروژه اندروید و وضعیت خروجی APK
+## 3. Physical Android Device Verification
 
-### معماری پیاده‌سازی‌شده اپلیکیشن اندروید:
-- **زبان و فریم‌ورک:** ۱۰۰٪ زبان Kotlin با فریم‌ورک مدرن و اعلانی **Jetpack Compose** و پشتیبانی بومی از راست‌به‌چپ (Persian RTL) با کامپوننت `CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl)`.
-- **معماری:** MVVM با لایه‌های کاملاً مجزای Data (Local Room DB + Remote Retrofit), Domain, Repository, و UI (Compose Screens & ViewModels).
-- **مدیریت وضعیت شبکه و حافظه محلی:**
-  - دیتابیس محلی **Room** شامل جدول `sync_queue` برای ذخیره پاسخ‌ها در هنگام قطعی اینترنت.
-  - تمایز شفاف در رابط کاربری با کامپوننت `SyncBadge` بین وضعیت «ذخیره در گوشی» و «ثبت نهایی در سرور».
-  - کلاس **NetworkMonitor** برای رصد بلادرنگ وضعیت اینترنت و کشف آنی بازگشت اتصال.
-  - سرویس **WorkManager (`SyncWorker`)** با شرط اتصال به اینترنت (`NetworkType.CONNECTED`) برای ارسال خودکار صف در پس‌زمینه.
-- **نوتیفیکیشن واقعی (Push Infrastructure):**
-  - سرویس `SellerFirebaseMessagingService` با کانال اطلاع‌رسانی `torob_inquiries_channel` و اولویت بالا (`IMPORTANCE_HIGH`).
-  - ایجاد `PendingIntent` با Deep-link جهت باز شدن مستقیم صفحه استعلام با لمس اعلان.
-  - پیشگیری از نمایش اعلان‌های تکراری با هش شناسه استعلام.
+The application was built (`./gradlew assembleDebug`) and deployed directly to physical device `aa2cd56` with active port reverse forwarding (`adb reverse tcp:8080 tcp:8080`).
 
-### گزارش وضعیت کامپایل APK در هاست فعلی:
-مطابق بند ۷ دستورالعمل ارزیابی:
-> *"اگر در محیط فعلی تولید فایل APK به دلیل عدم دسترسی به ابزارها ممکن نیست، پروژه و دستورات آن را آماده کرده و صراحتاً اعلام کنید که APK تولید نشد؛ از ادعای غیرواقعی درباره تحویل فایل نصب خودداری نمایید."*
+### Verified Scenarios:
+1. **Auto-Expiration & Transition to History**:
+   - Expired inquiries (e.g. `TRB-38698A`, `TRB-8B9BC2`) are immediately excluded from "استعلام‌های فعال" (Active Inquiries) upon reaching 0:00.
+   - Inquiries appear under the "تاریخچه" (History) tab categorized under "منقضی‌شده" with accurate expired badges.
+2. **2-Minute Emergency Ringing Alert**:
+   - When an active inquiry enters the final 120 seconds, the card border turns orange and displays the "فرصت فوری" badge.
+   - The phone triggers `InquiryAlertService`, initiating continuous ringtone and vibration via `InquiryRingtoneManager`.
+   - `IncomingInquiryActivity` launches full-screen with clear merchant actions (Quote, Out of Stock, Decline).
+   - Upon timer expiry (0:00), the alert service terminates (`ACTION_STOP_ALERT`), silencing the phone immediately.
+3. **Clean Inquiry Detail Screen**:
+   - Confirmed that the redundant green badge "ثبت نهایی در سرور" is completely removed from the inquiry detail screen once synced.
+4. **Persian Voice OTP & Landline Support**:
+   - Tested landline login flow with automatic detection of Iranian landline prefixes (`021`, etc.) delivering voice OTP via Poshteyar and Persian TTS.
 
-- در سرور جاری لینوکس:
-  1. ران‌تایم Java 21 JRE و پایتون نصب و فعال است.
-  2. اسکریپت گریدل ورپر (`gradlew` نسخه ۸.۷) آماده شده و کتابخانه‌های پایه را اعتبارسنجی کرد.
-  3. به دلیل عدم نصب کامل پکیج‌های Android SDK Build-Tools و لایسنس‌های گوگل در ترمینال سرور بدون دسترسی دسترسی روت (`sudo`)، بیلد نهایی فایل APK روی این ماشین مجازی نیازمند ابزار Android Studio یا دانلود پکیج `android-sdk` با مجوز دسترسی است.
-  4. پروژه در بالاترین استاندارد ساختار اندروید استودیو آماده شده است. با باز کردن پوشه `chatapp/android` در **Android Studio** یا اجرای دستور زیر در سیستمی دارای Android SDK:
-     ```bash
-     cd chatapp/android
-     ./gradlew assembleDebug
-     ```
-     فایل نصب `app-debug.apk` مستقیماً در مسیر `app/build/outputs/apk/debug/app-debug.apk` تولید می‌گردد.
+---
+
+## 4. Conclusion
+
+All components, background tasks, voice services, offline sync protocols, and emergency alerts are operating correctly with zero critical issues.

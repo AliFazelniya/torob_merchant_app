@@ -1,54 +1,72 @@
-# راهنمای جامع سرویس پوش‌نوتیفیکیشن اندروید (FCM Push Service Guide)
+# Push Notifications & Emergency Calling Architecture Guide
 
-این مستند نحوه پیکربندی، ارسال، دریافت و مدیریت نوتیفیکیشن‌های آنی در اپلیکیشن فروشندگان ترب را تشریح می‌کند.
+This guide describes the configuration, delivery mechanics, foreground services, full-screen intents, continuous ringtones, and offline countdown monitoring for the Torob Merchant Platform.
 
 ---
 
-## ۱. معماری و چرخه حیات پوش‌نوتیفیکیشن
+## 1. Notification Architecture & Dispatch Pipeline
 
-```
+```text
 ┌─────────────────────────────────┐
-│     مشتری استعلام ثبت می‌کند    │
+│     Customer Submits Inquiry    │
 └────────────────┬────────────────┘
-                 │ (ثانیه ۰)
+                 │ (Time Zero: 0:00)
 ┌────────────────▼────────────────┐
-│   سرور بک‌اند (FastAPI Scheduler) │
-│ - ثبت در inquiry_timelines      │
-│ - فراخوانی push_service.send()   │
+│   FastAPI Backend Scheduler     │
+│ - Registers inquiry timeline    │
+│ - push_service.send_to_seller() │
 └────────────────┬────────────────┘
                  │
                  ▼ FCM HTTP v1 API
 ┌─────────────────────────────────┐
 │ Firebase Cloud Messaging (Google)│
 └────────────────┬────────────────┘
-                 │ (اولویت High Priority)
+                 │ (High-Priority Data Payload)
 ┌────────────────▼────────────────────────────────────────┐
-│ گوشی فروشنده (حتی در حالت صفحه خاموش / بسته بودن اپ)   │
-│ - دریافت در SellerFirebaseMessagingService               │
-│ - ایجاد اعلان در کانال torob_inquiries_channel          │
-│ - جلوگیری از نمایش تکراری بر اساس شناسه استعلام          │
-│ - لمس اعلان -> باز شدن مستقیم صفحه جزئیات استعلام       │
+│ Merchant Android Phone (Screen Off / Doze Mode)        │
+│ 1. SellerFirebaseMessagingService receives payload      │
+│ 2. TorobNotificationHelper displays heads-up alert     │
+│ 3. Deep link "torob://inquiry/{id}" ready for tap      │
+└─────────────────────────────────────────────────────────┘
+                 │
+                 │ After 8 minutes without response (T - 2 min)
+┌────────────────▼────────────────────────────────────────┐
+│ Emergency Ringing Window (Urgent Call):                │
+│ 1. FCM delivers URGENT_CALL push OR                     │
+│    Local InquiryViewModel detects remaining <= 120s    │
+│ 2. InquiryAlertService starts as Foreground Service    │
+│ 3. InquiryRingtoneManager triggers looped ringtone &   │
+│    continuous vibration pattern                        │
+│ 4. Full-Screen IncomingInquiryActivity launches        │
+│ 5. Merchant can quote, declare out of stock, or decline │
+└─────────────────────────────────────────────────────────┘
+                 │
+                 │ At 10:00 (Expiration)
+┌────────────────▼────────────────────────────────────────┐
+│ Automatic Expiry Handling:                              │
+│ 1. ACTION_STOP_ALERT silences ringtone immediately     │
+│ 2. Inquiry status transitions to EXPIRED in Room DB     │
+│ 3. Card removed from Active list and moved to History  │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ۲. مراحل راه‌اندازی و اتصال کلیدهای Firebase (FCM)
+## 2. Setting Up Firebase Cloud Messaging (FCM HTTP v1)
 
-### گام اول: دریافت فایل `google-services.json`
-1. به کنسول فایربیس گوگل به آدرس [Firebase Console](https://console.firebase.google.com/) مراجعه نمایید.
-2. یک پروژه جدید ایجاد کنید (یا از پروژه موجود استفاده نمایید).
-3. یک اپلیکیشن اندروید با نام بسته دقیق `ir.torob.seller` ثبت کنید.
-4. فایل `google-services.json` تولید شده را دانلود کرده و جایگزین فایل موجود در مسیر زیر نمایید:
+### Step 1: Client `google-services.json`
+1. Access the [Firebase Console](https://console.firebase.google.com/).
+2. Create or open your project and register an Android app with package name `ir.torob.seller`.
+3. Download the generated `google-services.json` and place it at:
    ```
-   chatapp/android/app/google-services.json
+   android/app/google-services.json
    ```
 
-### گام دوم: دریافت کلید سرویس اکانت سرور (FCM HTTP v1)
-1. در کنسول فایربیس، وارد بخش **Project Settings** شده و تب **Service accounts** را انتخاب کنید.
-2. بر روی دکمه **Generate new private key** کلیک نمایید تا فایل کلید JSON دانلود شود.
-3. فایل را در سرور قرار دهید (مثلا در مسیر `chatapp/backend/service-account.json`).
-4. در فایل `.env` بک‌اند، متغیرهای زیر را تنظیم نمایید:
+### Step 2: Backend Service Account JSON
+1. In the Firebase Console, navigate to **Project Settings** > **Service accounts**.
+2. Click **Generate new private key** to download the Service Account credentials file.
+3. Save the file on the server (e.g., `backend/service-account.json`).
+4. Configure the environment variables in `backend/.env`:
    ```env
    FCM_ENABLED=true
    FCM_PROJECT_ID="your-firebase-project-id"
@@ -57,49 +75,64 @@
 
 ---
 
-## ۳. مدیریت دستگاه و توکن‌های پوش
+## 3. High-Priority Payload Specification
 
-1. **ثبت اولیه و بروزرسانی توکن:**
-   - با راه‌اندازی اپلیکیشن یا لاگین فروشنده، متد `onNewToken` در `SellerFirebaseMessagingService` فراخوانی شده و توکن یکتای دستگاه در مسیر `/api/seller/push/register-token` ذخیره و به حساب کاربری فروشگاه متصل می‌گردد.
-2. **مدیریت توکن‌های نامعتبر:**
-   - در صورت حذف برنامه توسط کاربر یا باطل شدن توکن، فایربیس کد خطای `UNREGISTERED` یا `INVALID_ARGUMENT` برمی‌گرداند. سرور به صورت خودکار توکن مذکور را در جدول `seller_devices` غیرفعال (`notifications_enabled = 0`) کرده و از ارسال مجدد جلوگیری می‌کند.
-3. **لغو اشتراک و غیرفعال‌سازی از تنظیمات:**
-   - فروشنده می‌تواند از منوی تنظیمات برنامه، دریافت نوتیفیکیشن را غیرفعال کند؛ در این حالت وضعیت در سرور و دستگاه بروزرسانی شده و ارسال پیام متوقف می‌گردد.
+The backend dispatches pure data messages with `priority: "high"` to ensure instant wake-up even during Android Doze mode:
 
----
-
-## ۴. محدودیت‌های سیستم‌عامل اندروید و راهکارهای پیاده‌سازی‌شده
-
-### الف) حالت صرفه‌جویی شدید باتری (Doze Mode)
-- **محدودیت:** در اندروید ۶ به بعد، در صورت خاموش بودن صفحه و عدم حرکت گوشی، سیستم‌عامل وارد Doze Mode شده و پردازش پس‌زمینه را به حالت تعلیق درمی‌آورد.
-- **راهکار پیاده‌سازی‌شده:** تمامی نوتیفیکیشن‌های استعلام در پیلود FCM با ویژگی `"priority": "HIGH"` ارسال می‌شوند. پیام‌های High-priority اجازه عبور از Doze Mode را دارند و گوشی را بیدار می‌کنند.
-
-### ب) محدودیت‌های پس‌زمینه (Background Execution Limits)
-- **محدودیت:** از اندروید ۸ به بعد سرویس‌های پس‌زمینه معمولی اجازه اجرا ندارند.
-- **راهکار پیاده‌سازی‌شده:** اپلیکیشن به جای اجرای سرویس‌های مداوم پس‌زمینه یا AlarmManagerهای محلی، تماماً متکی بر FCM Data Messages استاندارد و Notification Channels با اهمیت بالا (`IMPORTANCE_HIGH`) طراحی شده است.
-
-### ج) بهینه‌سازی‌های اختصاصی شرکت‌های سازنده (Xiaomi, Samsung, Huawei)
-- برخی برندها مثل شیائومی (MIUI/HyperOS) یا سامسونگ پردازش برنامه‌ها را به اجبار می‌بندند.
-- **راهنمای فروشنده در برنامه:** در بخش تنظیمات اپلیکیشن، راهنمای اعطای مجوز "Autostart" و خاموش کردن "Battery Optimization" تعبیه شده است.
-
-### د) لایسنس زمان‌بندی قطعی
-- مطابق استانداردهای طراحی سیستم‌های بلادرنگ، تحویل نوتیفیکیشن در یک ثانیه خاص به دلیل امکان خاموش بودن گوشی یا قطعی اینترنت خریدار/فروشنده **تضمین ۱۰۰ درصدی ندارد**.
-- به همین دلیل، سیستم ترب تمامی رویدادها را به صورت تفکیک‌شده ثبت می‌کند:
-  1. `registered_at`: زمان دقیق درخواست استعلام
-  2. `initial_push_at` و `dispatched_at`: زمان دقیق تلاش برای مخابره نوتیفیکیشن
-  3. `status`: وضعیت دریافتی از سرورهای گوگل (تحویل داده شد، شبیه‌سازی شد، یا با خطا مواجه شد)
-  4. `seller_responded_at`: زمان ثبت پاسخ توسط فروشنده
-  5. `response_time_seconds`: مدت زمان واقعی سپری‌شده تا پاسخ.
+```json
+{
+  "message": {
+    "token": "device_fcm_token_here",
+    "data": {
+      "notification_type": "URGENT_CALL",
+      "inquiry_id": "inq_80717080cc",
+      "tracking_code": "TRB-38698A",
+      "product_title": "لپ‌تاپ ایسوس ROG Strix",
+      "customer_name": "رضا محمدی",
+      "title": "تماس فوری استعلام ترب",
+      "body": "فقط ۲ دقیقه تا پایان مهلت پاسخ به استعلام لپ‌تاپ ایسوس ROG Strix باقی مانده است!",
+      "duration_seconds": "120"
+    },
+    "android": {
+      "priority": "HIGH"
+    }
+  }
+}
+```
 
 ---
 
-## ۵. تست و راستی‌آزمایی ارسال پوش‌نوتیفیکیشن
+## 4. Android Client Alert Components
 
-1. **تست با شبیه‌ساز ادمین:**
-   - پنل وب ادمین را در آدرس `http://localhost:8080/admin` باز کنید.
-   - وارد تب **شبیه‌ساز ارسال استعلام مشتری** شوید.
-   - فروشگاه مورد نظر را انتخاب و دکمه ارسال را بزنید.
-2. **پایش در تب لاگ‌ها:**
-   - در تب **لاگ ارسال پوش‌نوتیفیکیشن**، رکورد پیام با جزئیات توکن، پیلود ارسالی و کد بازگشتی فایربیس نمایش داده می‌شود.
-3. **تست روی دستگاه:**
-   - اگر اپلیکیشن روی گوشی یا ایمولاتور دارای Google Play Services باز باشد، اعلان همراه با صدا و ویبره ظاهر شده و لمس آن مستقیما صفحه ثبت قیمت همان کالا را باز می‌کند.
+### 4.1. `InquiryAlertService` (Foreground Service)
+- Manages wake locks (`PowerManager.PARTIAL_WAKE_LOCK` with `ACQUIRE_CAUSES_WAKEUP`).
+- Runs as a foreground service with type `FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK` on Android 10+ (API 29+).
+- Handles actions:
+  - `ACTION_START_ALERT`: Initiates continuous ringing, vibration, and full-screen intent.
+  - `ACTION_STOP_ALERT`: Silences audio, terminates vibration, releases wake locks, and stops the service.
+
+### 4.2. `InquiryRingtoneManager`
+- Uses `RingtoneManager.TYPE_RINGTONE` (fallback to `TYPE_ALARM` or `TYPE_NOTIFICATION`).
+- Configures `AudioAttributes.USAGE_NOTIFICATION_RINGTONE` and `USAGE_ALARM`.
+- Plays on a continuous loop until explicitly stopped or until maximum timeout (120 seconds).
+- Executes rhythmic vibration pattern: `[0ms delay, 1000ms vibrate, 1000ms pause]`.
+
+### 4.3. `IncomingInquiryActivity` (Full-Screen Intent)
+- Declared with:
+  ```xml
+  android:showWhenLocked="true"
+  android:turnScreenOn="true"
+  ```
+- Renders full-screen incoming call UI showing product title, customer question, reference price, and remaining countdown.
+- Provides immediate actions:
+  - **Submit Response (اعلام قیمت و موجودی)**: Opens response form.
+  - **Quick Confirm Previous Price (تأیید سریع قیمت قبلی)**: Instantly confirms catalog price.
+  - **Out of Stock (اعلام عدم موجودی)**: Sends immediate out-of-stock response.
+  - **Decline Inquiry (رد استعلام)**: Prompts for decline reason.
+
+### 4.4. Offline & Local Countdown Fail-Safe
+To safeguard merchants in environments without Google Play Services or when internet connectivity drops:
+- `InquiryViewModel` runs a periodic 3-second evaluation loop (`startPeriodicSyncAndUrgentCheck`).
+- Calculates live remaining seconds using the UTC expiration timestamp (`getLiveRemainingSeconds()`).
+- If remaining time is $\le 120$ seconds, it locally initiates `ACTION_START_ALERT` regardless of push delivery.
+- If remaining time reaches 0 seconds, it automatically marks the inquiry as `EXPIRED`, cancels all alarms, and updates the local Room database.
